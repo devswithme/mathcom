@@ -20,14 +20,14 @@ const Page = () => {
 				<div className='bg-neutral-50 p-6 rounded-xl max-w-3xl space-y-3 hover:border'>
 					<div className='flex items-center gap-x-3'>
 						<div className='w-10 h-10 bg-neutral-100 rounded-full' />
-						<div className='-space-y-2'>
+						<div className='-space-y-1'>
 							<h1 className='font-medium'>m/cie_checkpoint</h1>
 							<span className='text-xs text-muted-foreground'>
 								Username_username &bull; 7hr. ago
 							</span>
 						</div>
 					</div>
-					<h1 className='text-lg font-medium'>
+					<h1 className='text-lg font-bold'>
 						Input question prompt here
 					</h1>
 					<p className='text-sm'>
@@ -85,7 +85,7 @@ const Page = () => {
 					<div>
 						<div className='flex items-center gap-x-3'>
 							<div className='w-10 h-10 bg-neutral-100 rounded-full' />
-							<h1 className='font-medium'>
+							<h1 className='font-semibold'>
 								Username_username{' '}
 								<span className='text-xs font-normal text-muted-foreground'>
 									&bull; 7hr. ago
@@ -109,7 +109,7 @@ const Page = () => {
 					<div>
 						<div className='flex items-center gap-x-3'>
 							<div className='w-10 h-10 bg-neutral-100 rounded-full' />
-							<h1 className='font-medium'>
+							<h1 className='font-semibold'>
 								Username_username{' '}
 								<span className='text-xs font-normal text-muted-foreground'>
 									&bull; 7hr. ago

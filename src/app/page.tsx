@@ -8,14 +8,14 @@ export default function Home() {
 			<div className='bg-neutral-50 p-6 rounded-xl max-w-3xl space-y-3 hover:border'>
 				<div className='flex items-center gap-x-3'>
 					<div className='w-10 h-10 bg-neutral-100 rounded-full' />
-					<div className='-space-y-2'>
-						<h1 className='font-medium'>m/cie_checkpoint</h1>
+					<div className='-space-y-1'>
+						<h1 className='font-semibold'>m/cie_checkpoint</h1>
 						<span className='text-xs text-muted-foreground'>
 							Username_username &bull; 7hr. ago
 						</span>
 					</div>
 				</div>
-				<h1 className='text-lg font-medium'>
+				<h1 className='text-lg font-bold'>
 					Input question prompt here
 				</h1>
 				<p className='text-sm'>
@@ -46,14 +46,14 @@ export default function Home() {
 				className='bg-neutral-50 p-6 rounded-xl max-w-3xl space-y-3 hover:border'>
 				<div className='flex items-center gap-x-3'>
 					<div className='w-10 h-10 bg-neutral-100 rounded-full' />
-					<div className='-space-y-2'>
-						<h1 className='font-medium'>m/cie_checkpoint</h1>
+					<div className='-space-y-1'>
+						<h1 className='font-semibold'>m/cie_checkpoint</h1>
 						<span className='text-xs text-muted-foreground'>
 							Username_username &bull; 7hr. ago
 						</span>
 					</div>
 				</div>
-				<h1 className='text-lg font-medium'>
+				<h1 className='text-lg font-bold'>
 					Input question prompt here
 				</h1>
 				<p className='text-sm'>
