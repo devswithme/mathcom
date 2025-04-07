@@ -1,5 +1,7 @@
+'use client'
+
 import Link from 'next/link'
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { buttonVariants } from './ui/button'
 import {
 	ArrowUpRight,
@@ -10,10 +12,39 @@ import {
 	MessageCircle,
 	Upload,
 } from 'lucide-react'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
 
 const Navbar = ({ className }: { className?: string }) => {
+	const [photoURL, setPhotoURL] = useState<string | null>(null)
+
+	useEffect(() => {
+		const unsubscribe = onAuthStateChanged(auth, (user) => {
+			if (user && user.photoURL) {
+				setPhotoURL(user.photoURL)
+			} else {
+				setPhotoURL(null)
+			}
+		})
+		return () => unsubscribe()
+	}, [])
+
 	return (
 		<aside className={className}>
+			{/* Profile section */}
+			{photoURL && (
+				<div className='flex items-center gap-3 px-2 pb-4'>
+					<img
+						src={photoURL}
+						alt='Profile'
+						className='w-10 h-10 rounded-full object-cover border'
+					/>
+					<div className='text-sm font-medium line-clamp-1'>
+						My Profile
+					</div>
+				</div>
+			)}
+
 			<Link
 				href='/'
 				className={buttonVariants({

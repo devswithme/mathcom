@@ -1,9 +1,26 @@
+'use client'
+
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import Link from 'next/link'
 import React from 'react'
+import { signInWithPopup } from 'firebase/auth'
+import { auth, provider } from '@/lib/firebase'
 
 const Page = () => {
+	const handleLogin = async () => {
+		try {
+			const result = await signInWithPopup(auth, provider)
+			const user = result.user
+			console.log('Logged in as:', user.displayName)
+
+			// Optional: Redirect after login
+			// router.push('/dashboard') — if you're using next/router or next/navigation
+		} catch (error) {
+			console.error('Login failed:', error)
+		}
+	}
+
 	return (
 		<main className='px-6 sm:px-0 sm:pr-8 sm:pl-[28rem] pt-24 sm:pt-36 pb-8 flex flex-col md:flex-row items-start gap-5'>
 			<div className='bg-neutral-50 py-8 px-10 rounded-xl max-w-md w-full space-y-5 shadow-md border'>
@@ -14,6 +31,7 @@ const Page = () => {
 					</p>
 				</div>
 				<Button
+					onClick={handleLogin}
 					className='w-full border-black font-semibold'
 					size='lg'
 					variant='outline'>
