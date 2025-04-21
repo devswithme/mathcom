@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowUp, MessageCircle, Share2 } from 'lucide-react'
 import Link from 'next/link'
+import Image from "next/image"
 import { useRouter } from 'next/navigation'
 import { db } from '@/lib/firebase'
 import { collection, getDocs, orderBy, query, doc, getDoc, updateDoc, increment } from 'firebase/firestore'
@@ -14,6 +15,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog"
+import PostSkeleton from "@/components/post/post-skeleton"
 
 // Function to format relative time
 const formatRelativeTime = (timestamp: number): string => {
@@ -180,9 +182,13 @@ export default function Home() {
 	}
 
 	return (
-		<main className='flex flex-col'>
+		<main className="px-6 sm:px-0 sm:pr-8 sm:pl-72 pt-24 pb-8 flex flex-col">
 			{loading ? (
-				<p className='text-sm text-muted-foreground'>Loading posts...</p>
+				<>
+					<PostSkeleton withImage={false} />
+					<PostSkeleton withImage={false} />
+					<PostSkeleton withImage={false} />
+				</>
 			) : posts.length === 0 ? (
 				<p className='text-center text-muted-foreground text-sm font-medium'>
 					No questions have been posted yet. Be the first to{' '}
@@ -192,18 +198,20 @@ export default function Home() {
 					!
 				</p>
 			) : (
-				<div className="flex flex-col pt-4 px-4">
+				<div className="flex flex-col pt-4 gap-y-5">
 					{posts.map((post, index) => (
 						<Link
 							href={`/post/${post.id}`}
 							key={post.id}
-							className={`px-6 py-6 max-w-3xl space-y-3 transition-all duration-200 hover:bg-neutral-50 hover:rounded-xl hover:shadow-sm border-b border-neutral-200/30 last:border-b-0 ${index === 0 ? 'pt-8' : ''}`}>
+							className="bg-neutral-50 p-6 rounded-xl max-w-3xl space-y-3 hover:border">
 							{/* User Info */}
 							<div className='flex items-center gap-x-3'>
 								{post.avatar ? (
-									<img
+									<Image
 										src={post.avatar}
 										alt='Avatar'
+                    width={40}
+                    height={40}
 										className='w-10 h-10 rounded-full object-cover bg-neutral-100'
 									/>
 								) : (
@@ -232,9 +240,11 @@ export default function Home() {
 							{/* Uploaded Image */}
 							{post.imageURL && (
 								<div className='w-full aspect-video bg-neutral-100 rounded-xl my-5'>
-									<img
+									<Image
 										src={post.imageURL}
 										alt='Uploaded image'
+                    width={800}
+                    height={400}
 										className='w-full h-full object-cover rounded-xl'
 									/>
 								</div>

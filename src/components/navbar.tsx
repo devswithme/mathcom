@@ -1,35 +1,34 @@
-'use client'
+"use client";
 
-import Link from 'next/link'
-import React, { useEffect, useState } from 'react'
-import { buttonVariants } from './ui/button'
+import Link from "next/link";
+import React, { useEffect, useState } from "react";
+import { buttonVariants } from "./ui/button";
 import {
-	Star,
-	Home,
-	Info,
-	Mail,
-	MessageSquare,
-	Download,
+	ArrowUpRight,
 	ChevronDown,
 	ChevronUp,
-	X,
-	Menu
-} from 'lucide-react'
-import { onAuthStateChanged } from 'firebase/auth'
-import { auth } from '@/lib/firebase'
-import { Quicksand, Smooch_Sans } from 'next/font/google'
-import { usePathname } from 'next/navigation'
-import { useNavbar } from '@/context/NavbarContext'
-import { Button } from '@/components/ui/button'
+	HomeIcon,
+	Info,
+	MailIcon,
+	MessageCircle,
+	Upload,
+	Star,
+} from "lucide-react";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "@/lib/firebase";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { usePathname } from 'next/navigation';
+import { useNavbar } from '@/context/NavbarContext';
+import { Quicksand, Smooch_Sans } from 'next/font/google';
 
-const quicksand = Quicksand({ subsets: ['latin'] })
-const smoochSans = Smooch_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'] })
+const quicksand = Quicksand({ subsets: ['latin'] });
+const smoochSans = Smooch_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'] });
 
 const Navbar = ({ className }: { className?: string }) => {
-	const [photoURL, setPhotoURL] = useState<string | null>(null)
-	const pathname = usePathname()
-	const { isNavbarOpen } = useNavbar()
-	const [isMounted, setIsMounted] = useState(false)
+	const [photoURL, setPhotoURL] = useState<string | null>(null);
+	const pathname = usePathname();
+	const { isNavbarOpen } = useNavbar();
+	const [isMounted, setIsMounted] = useState(false);
 	
 	const [communityOpen, setCommunityOpen] = useState(true);
 	const [resourcesOpen, setResourcesOpen] = useState(true);
@@ -37,36 +36,50 @@ const Navbar = ({ className }: { className?: string }) => {
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (user) => {
 			if (user && user.photoURL) {
-				setPhotoURL(user.photoURL)
+				setPhotoURL(user.photoURL);
 			} else {
-				setPhotoURL(null)
+				setPhotoURL(null);
 			}
-		})
+		});
 		
-		setIsMounted(true)
+		setIsMounted(true);
 		
-		return () => {
-			unsubscribe()
-		}
-	}, [])
+		return () => unsubscribe();
+	}, []);
 
 	const isActive = (path: string) => {
-		return pathname === path
-	}
+		return pathname === path;
+	};
 
 	// Handle server-side rendering
 	if (!isMounted) {
-		return null
+		return null;
 	}
 
 	// Only check visibility on mobile, desktop always shows
-	const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+	const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
 	if (!isNavbarOpen && isMobile) {
-		return null
+		return null;
 	}
 
 	return (
 		<aside className={`${className} flex flex-col text-gray-800 ${quicksand.className}`}>
+			{/* Profile section */}
+			{photoURL && (
+				<div className="flex items-center gap-3 px-2 pb-4">
+					<Avatar>
+						<AvatarImage
+							src={photoURL ?? ""}
+							alt="Profile"
+							className="w-10 h-10 rounded-full object-cover border"
+						/>
+						<AvatarFallback>?</AvatarFallback>
+					</Avatar>
+
+					<div className="text-sm font-medium line-clamp-1">My Profile</div>
+				</div>
+			)}
+
 			<div className="py-3">
 				<Link
 					href='/'
@@ -75,7 +88,7 @@ const Navbar = ({ className }: { className?: string }) => {
 							? 'bg-gray-100 text-gray-900 font-medium' 
 							: 'text-gray-700'
 					}`}>
-					<Home size={20} strokeWidth={1.5} />
+					<HomeIcon size={20} strokeWidth={1.5} />
 					<span>Home</span>
 				</Link>
 				<Link
@@ -95,7 +108,7 @@ const Navbar = ({ className }: { className?: string }) => {
 							? 'bg-gray-100 text-gray-900 font-medium' 
 							: 'text-gray-700'
 					}`}>
-					<MessageSquare size={20} strokeWidth={1.5} />
+					<MessageCircle size={20} strokeWidth={1.5} />
 					<span>Messages</span>
 				</Link>
 			</div>
@@ -175,7 +188,7 @@ const Navbar = ({ className }: { className?: string }) => {
 									? 'bg-gray-100 text-gray-900 font-medium' 
 									: 'text-gray-700'
 							}`}>
-							<Mail size={20} strokeWidth={1.5} className="text-gray-700" />
+							<MailIcon size={20} strokeWidth={1.5} className="text-gray-700" />
 							<span>MathCom Rules</span>
 						</Link>
 						<Link
@@ -185,14 +198,14 @@ const Navbar = ({ className }: { className?: string }) => {
 									? 'bg-gray-100 text-gray-900 font-medium' 
 									: 'text-gray-700'
 							}`}>
-							<Download size={20} strokeWidth={1.5} className="text-gray-700" />
+							<Upload size={20} strokeWidth={1.5} className="text-gray-700" />
 							<span>Help</span>
 						</Link>
 					</div>
 				)}
 			</div>
 		</aside>
-	)
-}
+	);
+};
 
-export default Navbar 
+export default Navbar;

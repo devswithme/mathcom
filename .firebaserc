@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "mathcom-69440"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }
