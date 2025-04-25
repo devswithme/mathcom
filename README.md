@@ -32,7 +32,8 @@ http://localhost:5001
 ### 2. Frontend Setup (Next.js app)
 
 ```bash
-cd frontend
+cd mathcom_ai  # or the folder where your Next.js project resides
+
 npm install
 
 # Run the development server
