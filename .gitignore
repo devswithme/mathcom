@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+*.pyo
+
+# Virtual environment
+ai-server/venv/
+
+# Environment variables
+.env
+
+# IDE / Editor configs
+.vscode/
+.idea/
+*.swp
+
+# macOS system files
+.DS_Store
+
+# Flask cache/logs
+instance/
+*.log
+*.db
+
+# Pytest cache
+.pytest_cache/
+
+# Jupyter notebooks
+.ipynb_checkpoints/
+
+# Node
+node_modules/
