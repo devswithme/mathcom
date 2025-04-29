@@ -9,8 +9,6 @@ CORS(app, resources={r"/ask": {"origins": "http://localhost:3000"}})
 def ask():
     try:
         data = request.get_json()
-        print("[Server] Received payload:", data)
-
         messages = data.get('messages', [])
         if not messages:
             return jsonify({"error": "No messages provided"}), 400
@@ -32,4 +30,4 @@ def ask():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=False)

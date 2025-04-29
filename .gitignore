@@ -1,34 +1,31 @@
-# Python
+# --- PYTHON BACKEND ---
 __pycache__/
 *.py[cod]
 *.egg
 *.egg-info/
 *.pyo
-
-# Virtual environment
 ai-server/venv/
+instance/
+*.log
+*.db
+.pytest_cache/
+.ipynb_checkpoints/
 
-# Environment variables
+# --- NODE/REACT FRONTEND ---
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# --- ENV VARIABLES ---
 .env
+.env.local
+.env.*.local
 
-# IDE / Editor configs
+# --- IDE/EDITOR ---
 .vscode/
 .idea/
 *.swp
 
-# macOS system files
+# --- macOS ---
 .DS_Store
-
-# Flask cache/logs
-instance/
-*.log
-*.db
-
-# Pytest cache
-.pytest_cache/
-
-# Jupyter notebooks
-.ipynb_checkpoints/
-
-# Node
-node_modules/
