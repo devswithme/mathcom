@@ -40,4 +40,27 @@
     margin: 0; /* Ensure no unintended margin */
     padding: 0; /* Ensure no unintended padding */
   }
+  
+  /* Fix header styling to ensure it's white, not brown */
+  header {
+    @apply bg-white border-b border-gray-200;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  
+  /* Fix button styling */
+  .btn, button[class*="btn"] {
+    @apply rounded-md transition-colors;
+  }
+  
+  /* Simplified search input styling */
+  input[type="search"], input[type="text"] {
+    @apply bg-gray-50 border border-gray-200;
+  }
+}
+
+/* Fix navbar X button issue by hiding it on desktop */
+@media (min-width: 768px) {
+  .md\:hidden {
+    display: none !important;
+  }
 }

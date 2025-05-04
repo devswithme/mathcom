@@ -1,7 +1,7 @@
 'use client'
 
 import { Button, buttonVariants } from '@/components/ui/button'
-import { LogOut, Menu, Plus, Search, Settings } from 'lucide-react'
+import { LogOut, Menu, MenuIcon, Plus, Search, Settings, SidebarClose, SidebarOpen } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
@@ -23,10 +23,12 @@ import { signOut, onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
 import { useEffect, useState } from 'react'
 import Navbar from '@/components/navbar'
+import { useNavbar } from '@/context/NavbarContext'
 
 export default function Header() {
 	const router = useRouter()
 	const [photoURL, setPhotoURL] = useState<string | null>(null)
+	const { isNavbarOpen, toggleNavbar } = useNavbar()
 
 	useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -46,8 +48,18 @@ export default function Header() {
 	}
 
 	return (
-		<header className='fixed top-0 z-50 w-full border-b-[0.1px] border-black px-10 py-2 flex justify-between items-center gap-x-10 bg-white'>
-			<Link href='/'>
+		<header className='fixed top-0 z-50 w-full bg-white px-3 md:px-6 py-2 flex justify-between items-center gap-x-4 shadow-sm'>
+			{/* Mobile menu button - shown only on small screens */}
+			<Button 
+				onClick={toggleNavbar}
+				variant="ghost" 
+				size="sm" 
+				className="p-1 mr-2 md:hidden"
+			>
+				<Menu className="h-6 w-6" />
+			</Button>
+			
+			<Link href='/' className="flex items-center">
 				<Image 
 					src='/logo.svg' 
 					alt='logo' 
@@ -57,39 +69,28 @@ export default function Header() {
 					style={{ width: '50px', height: 'auto' }}
 				/>
 			</Link>
-			<Button
-				className='justify-start w-full lg:max-w-lg max-w-sm rounded-full hidden md:flex'
-				size='lg'
-				variant='secondary'>
-				<Search className='mr-2' />
-				<p className='text-muted-foreground'>Search MathCom</p>
-			</Button>
-			<div className='flex gap-x-5 items-center'>
-				<Link
-					href='/login'
-					className={buttonVariants({
-						className:
-							'!bg-[#11244DB2] !rounded-full !hidden sm:!flex !font-bold',
-						size: 'lg',
-					})}>
-					Log In
-				</Link>
+			
+			<div className="relative w-full lg:max-w-lg max-w-sm hidden md:block">
+				<input 
+					type="search" 
+					placeholder="Search MathCom" 
+					className="w-full py-2 px-4 rounded-full bg-gray-50 border border-gray-200 text-sm"
+				/>
+			</div>
+			
+			<div className='flex gap-x-3 items-center'>
 				<Link
 					href='/ask'
-					className={buttonVariants({
-						className:
-							'!bg-[#11244DB2] !rounded-full uppercase !hidden sm:!flex !font-bold',
-						size: 'lg',
-					})}>
-					<Plus strokeWidth={4} />
+					className='bg-[#11244D] hover:bg-[#11244D]/90 text-white px-4 py-2 rounded-full hidden sm:flex items-center text-sm'>
+					<Plus className="mr-1" size={18} strokeWidth={2.5} />
 					Ask
 				</Link>
 				<DropdownMenu>
 					<DropdownMenuTrigger asChild>
 						<Button
 							className='rounded-full aspect-square p-0'
-							size='lg'
-							variant='secondary'>
+							size='sm'
+							variant='outline'>
 							{photoURL ? (
 								<img
 									src={photoURL}
@@ -97,13 +98,13 @@ export default function Header() {
 									className='w-8 h-8 rounded-full object-cover'
 								/>
 							) : (
-								<div className='w-8 h-8 bg-neutral-200 rounded-full' />
+								<div className='w-8 h-8 bg-gray-200 rounded-full' />
 							)}
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent
 						align='end'
-						className='shadow-none bg-neutral-50 border w-42'>
+						className='shadow-md bg-white border rounded-md w-48'>
 						<DropdownMenuLabel className='flex gap-x-2.5 items-center'>
 							{photoURL ? (
 								<img
@@ -112,7 +113,7 @@ export default function Header() {
 									className='w-8 h-8 rounded-full object-cover'
 								/>
 							) : (
-								<div className='w-8 h-8 bg-neutral-200 rounded-full' />
+								<div className='w-8 h-8 bg-gray-200 rounded-full' />
 							)}
 							<p>Profile</p>
 						</DropdownMenuLabel>
@@ -121,26 +122,14 @@ export default function Header() {
 							<Link
 								href='/profile'
 								className='flex items-center gap-x-2'>
-								<Settings /> Settings
+								<Settings size={16} /> Settings
 							</Link>
 						</DropdownMenuItem>
 						<DropdownMenuItem onClick={handleLogout}>
-							<LogOut /> Log Out
+							<LogOut size={16} /> Log Out
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
-
-				<Sheet>
-					<SheetTrigger className='block sm:hidden'>
-						<Button asChild size='icon' variant='link'>
-							<Menu className='w-6 h-6' />
-						</Button>
-					</SheetTrigger>
-					<SheetContent>
-						<SheetTitle></SheetTitle>
-						<Navbar className='px-5 py-8' />
-					</SheetContent>
-				</Sheet>
 			</div>
 		</header>
 	)

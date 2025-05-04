@@ -8,6 +8,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
+import Link from "next/link";
 
 // Helper component to render markdown content
 const MarkdownContent = ({ content }: { content: string }) => {
@@ -172,10 +173,12 @@ const Page = () => {
               <div className="w-7 h-7 bg-neutral-300 rounded-full" />
               <h1 className="font-medium">Ask a Tutor</h1>
             </div>
-            <div className="bg-neutral-100 flex items-center gap-x-3 p-3 rounded-full hover:bg-neutral-200 transition-colors cursor-pointer">
-              <div className="w-7 h-7 bg-neutral-300 rounded-full" />
-              <h1 className="font-medium">Close Session</h1>
-            </div>
+            <Link href="/feedback" className="block">
+              <div className="bg-neutral-100 flex items-center gap-x-3 p-3 rounded-full hover:bg-neutral-200 transition-colors cursor-pointer">
+                <div className="w-7 h-7 bg-neutral-300 rounded-full" />
+                <h1 className="font-medium">Close Session</h1>
+              </div>
+            </Link>
           </div>
         </div>
       </div>

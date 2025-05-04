@@ -20,8 +20,14 @@ import {
 } from 'firebase/storage'
 import { onAuthStateChanged } from 'firebase/auth'
 import { v4 as uuid } from 'uuid'
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip"
 
-const communities = ['Checkpoint', 'IGCSE', 'A Level']
+const communities = ['CIE Checkpoint', 'CIE IGCSE', 'CIE AS Level', 'CIE A2 Level']
 
 export default function AskPage() {
 	const [title, setTitle] = useState('')
@@ -78,7 +84,7 @@ export default function AskPage() {
 	
 
 	return (
-		<main className='grid grid-cols-1 gap-y-5'>
+		<main className='grid grid-cols-1 gap-y-5 px-8'>
 			<h1 className='text-2xl font-bold'>Ask a question</h1>
 
 			{/* Community Dropdown */}
@@ -148,7 +154,17 @@ export default function AskPage() {
 						className='bg-[#7F0000] rounded-full !font-bold'>
 						Ask AI
 					</Button>
-					<Info className='w-4 h-4' />
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger>
+								<Info className='w-5 h-5 cursor-pointer text-gray-600' />
+							</TooltipTrigger>
+							<TooltipContent className='max-w-xs p-3 text-sm'>
+								Get a tailored response from MathCom AI — designed to guide you step-by-step through your math question.
+								(Your question won&apos;t be posted publicly unless you choose to.)
+							</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 			</div>
 		</main>
