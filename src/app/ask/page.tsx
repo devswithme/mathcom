@@ -78,7 +78,7 @@ export default function AskPage() {
 	
 
 	return (
-		<main className='px-6 sm:px-0 sm:pr-8 sm:pl-72 pt-24 pb-8 grid grid-cols-1 gap-y-5'>
+		<main className='grid grid-cols-1 gap-y-5'>
 			<h1 className='text-2xl font-bold'>Ask a question</h1>
 
 			{/* Community Dropdown */}

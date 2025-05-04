@@ -25,7 +25,7 @@ const Page = () => {
 	}
 
 	return (
-		<main className='px-6 sm:px-0 sm:pr-8 sm:pl-72 pt-24 sm:pt-24 pb-8 flex flex-col md:flex-row items-start gap-5'>
+		<main className='flex flex-col md:flex-row items-start gap-5'>
 			<div className='bg-neutral-50 p-6 rounded-xl max-w-2xl space-y-5 border shadow-lg'>
 				<div className='flex sm:items-center gap-5 justify-between sm:flex-row flex-col items-start'>
 					<div className='flex items-center gap-x-3'>

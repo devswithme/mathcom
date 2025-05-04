@@ -48,7 +48,14 @@ export default function Header() {
 	return (
 		<header className='fixed top-0 z-50 w-full border-b-[0.1px] border-black px-10 py-2 flex justify-between items-center gap-x-10 bg-white'>
 			<Link href='/'>
-				<Image src='/logo.svg' alt='logo' width={50} height={50} />
+				<Image 
+					src='/logo.svg' 
+					alt='logo' 
+					width={50} 
+					height={50} 
+					priority 
+					style={{ width: '50px', height: 'auto' }}
+				/>
 			</Link>
 			<Button
 				className='justify-start w-full lg:max-w-lg max-w-sm rounded-full hidden md:flex'

@@ -41,7 +41,7 @@ export default function Home() {
 	}, [])
 
 	return (
-		<main className='px-6 sm:px-0 sm:pr-8 sm:pl-72 pt-24 pb-8 grid grid-cols-1 gap-y-5'>
+		<main className='flex flex-col space-y-6'>
 			{loading ? (
 				<p className='text-sm text-muted-foreground'>Loading posts...</p>
 			) : posts.length === 0 ? (
@@ -57,7 +57,7 @@ export default function Home() {
 					<Link
 						href={`/post/${post.id}`}
 						key={post.id}
-						className='bg-neutral-50 p-6 rounded-xl max-w-3xl space-y-3 hover:border'>
+						className='bg-neutral-50 p-6 rounded-xl max-w-3xl space-y-3 hover:border border border-transparent'>
 						{/* User Info */}
 						<div className='flex items-center gap-x-3'>
 							{post.avatar ? (

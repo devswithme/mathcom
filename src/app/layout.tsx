@@ -2,6 +2,7 @@
 import type { Metadata } from 'next'
 import { Quicksand } from 'next/font/google'
 import './globals.css'
+import 'katex/dist/katex.min.css';
 
 import Navbar from '@/components/navbar'
 import Header from '@/components/header'
@@ -23,8 +24,12 @@ export default function RootLayout({
 		<html lang='en'>
 			<body className={`${quickSand.className} antialiased`}>
 				<Header />
-				<Navbar className='fixed z-40 left-0 border-r-[0.1px] border-black w-64 h-full bg-white pt-20 px-5 hidden sm:block' />
-				{children}
+				<div className="flex min-h-screen">
+					<Navbar className="fixed top-[56px] left-0 w-64 h-[calc(100vh-56px)] border-r border-neutral-200 bg-white px-4 overflow-y-auto hidden sm:block z-40" />
+					<main className="sm:ml-64 w-full px-4 pt-[66px] pb-4">
+						{children}
+					</main>
+				</div>
 			</body>
 		</html>
 	)

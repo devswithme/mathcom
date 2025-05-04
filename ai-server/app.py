@@ -3,7 +3,7 @@ from flask_cors import CORS
 from deepseek import get_model_name_for_question, stream_ai_response, mathcom_system_prompt
 
 app = Flask(__name__)
-CORS(app, resources={r"/ask": {"origins": "http://localhost:3000"}})
+CORS(app, resources={r"/ask": {"origins": ["http://localhost:3000", "http://localhost:3007", "http://localhost:3008"]}})
 
 @app.route('/ask', methods=['POST'])
 def ask():

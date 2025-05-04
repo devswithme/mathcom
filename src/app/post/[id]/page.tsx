@@ -12,12 +12,13 @@ import React from 'react'
 
 const Page = () => {
 	return (
-		<main className='px-6 sm:px-0 sm:pr-8 sm:pl-72 pt-24 pb-8 flex flex-col md:flex-row items-start gap-5'>
-			<Link href='/'>
+		<main className='flex flex-col space-y-6'>
+			<Link href='/' className="flex items-center gap-x-2 text-gray-600 hover:text-gray-900">
 				<ArrowLeftCircleIcon />
+				<span>Back to Home</span>
 			</Link>
 			<div className='space-y-5'>
-				<div className='bg-neutral-50 p-6 rounded-xl max-w-3xl space-y-3 hover:border'>
+				<div className='bg-neutral-50 p-6 rounded-xl max-w-3xl space-y-3 border border-gray-100'>
 					<div className='flex items-center gap-x-3'>
 						<div className='w-10 h-10 bg-neutral-100 rounded-full' />
 						<div className='-space-y-1'>
