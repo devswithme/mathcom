@@ -4,19 +4,25 @@ import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 import { buttonVariants } from './ui/button'
 import {
-	ArrowUpRight,
-	ChevronDown,
-	HomeIcon,
+	Star,
+	Home,
 	Info,
-	MailIcon,
-	MessageCircle,
-	Upload,
+	Mail,
+	MessageSquare,
+	Download,
+	ChevronDown,
 } from 'lucide-react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '@/lib/firebase'
+import { Quicksand, Smooch_Sans } from 'next/font/google'
+import { usePathname } from 'next/navigation'
+
+const quicksand = Quicksand({ subsets: ['latin'] })
+const smoochSans = Smooch_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'] })
 
 const Navbar = ({ className }: { className?: string }) => {
 	const [photoURL, setPhotoURL] = useState<string | null>(null)
+	const pathname = usePathname()
 
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -29,141 +35,134 @@ const Navbar = ({ className }: { className?: string }) => {
 		return () => unsubscribe()
 	}, [])
 
-	return (
-		<aside className={className}>
-			{/* Profile section */}
-			{photoURL && (
-				<div className='flex items-center gap-3 px-2 pb-4'>
-					<img
-						src={photoURL}
-						alt='Profile'
-						className='w-10 h-10 rounded-full object-cover border'
-					/>
-					<div className='text-sm font-medium line-clamp-1'>
-						My Profile
-					</div>
-				</div>
-			)}
+	const isActive = (path: string) => {
+		return pathname === path
+	}
 
-			<Link
-				href='/'
-				className={buttonVariants({
-					size: 'lg',
-					variant: 'secondary',
-					className: 'w-full justify-start',
-				})}>
-				<HomeIcon strokeWidth={2} /> Home
-			</Link>
-			<Link
-				href='/'
-				className={buttonVariants({
-					size: 'lg',
-					variant: 'link',
-					className: 'w-full justify-start',
-				})}>
-				<ArrowUpRight /> Explore
-			</Link>
-			<Link
-				href='/'
-				className={buttonVariants({
-					size: 'lg',
-					variant: 'link',
-					className: 'w-full justify-start',
-				})}>
-				<MessageCircle /> Messages
-			</Link>
-			<hr className='my-2' />
-			<Link
-				href='/'
-				className={buttonVariants({
-					size: 'lg',
-					variant: 'link',
-					className: 'w-full flex !justify-between !p-0 !pl-4',
-				})}>
-				Community <ChevronDown />
-			</Link>
-			<Link
-				href='/'
-				className={buttonVariants({
-					size: 'lg',
-					variant: 'link',
-					className: 'w-full justify-start !p-0 !pl-4',
-				})}>
-				<div className='w-5 h-5 rounded-full bg-neutral-100 mr-1' />
-				m/cie_checkpoint
-			</Link>
-			<Link
-				href='/'
-				className={buttonVariants({
-					size: 'lg',
-					variant: 'link',
-					className: 'w-full justify-start !p-0 !pl-4',
-				})}>
-				<div className='w-5 h-5 rounded-full bg-neutral-100 mr-1' />{' '}
-				m/cie_igcse
-			</Link>
-			<Link
-				href='/'
-				className={buttonVariants({
-					size: 'lg',
-					variant: 'link',
-					className: 'w-full justify-start !p-0 !pl-4',
-				})}>
-				<div className='w-5 h-5 rounded-full bg-neutral-100 mr-1' />{' '}
-				m/cie_aslevel
-			</Link>
-			<Link
-				href='/'
-				className={buttonVariants({
-					size: 'lg',
-					variant: 'link',
-					className: 'w-full justify-start !p-0 !pl-4',
-				})}>
-				<div className='w-5 h-5 rounded-full bg-neutral-100 mr-1' />{' '}
-				m/cie_a2level
-			</Link>
-			<hr className='my-2' />
-			<Link
-				href='/'
-				className={buttonVariants({
-					size: 'lg',
-					variant: 'link',
-					className: 'w-full flex !justify-between !p-0 !pl-4',
-				})}>
-				Resources <ChevronDown />
-			</Link>
-			<Link
-				href='/'
-				className={buttonVariants({
-					size: 'lg',
-					variant: 'link',
-					className: 'w-full justify-start !p-0 !pl-4',
-				})}>
-				<Info />
-				About MathCom
-			</Link>
-			<Link
-				href='/'
-				className={buttonVariants({
-					size: 'lg',
-					variant: 'link',
-					className: 'w-full justify-start !p-0 !pl-4',
-				})}>
-				<MailIcon />
-				MathCom Rules
-			</Link>
-			<Link
-				href='/'
-				className={buttonVariants({
-					size: 'lg',
-					variant: 'link',
-					className: 'w-full justify-start !p-0 !pl-4',
-				})}>
-				<Upload />
-				Help
-			</Link>
+	return (
+		<aside className={`${className} flex flex-col text-neutral-800 ${quicksand.className}`}>
+			<div className="py-3">
+				<Link
+					href='/'
+					className={`flex items-center gap-3 px-4 py-2.5 text-base hover:bg-neutral-100 rounded-md ${
+						isActive('/') 
+							? 'bg-neutral-100 text-neutral-900 font-medium' 
+							: 'text-neutral-900'
+					}`}>
+					<Home size={20} strokeWidth={1.5} />
+					<span>Home</span>
+				</Link>
+				<Link
+					href='/explore'
+					className={`flex items-center gap-3 px-4 py-2.5 text-base hover:bg-neutral-100 rounded-md ${
+						isActive('/explore') 
+							? 'bg-neutral-100 text-neutral-900 font-medium' 
+							: 'text-neutral-900'
+					}`}>
+					<Star size={20} strokeWidth={1.5} />
+					<span>Explore</span>
+				</Link>
+				<Link
+					href='/messages'
+					className={`flex items-center gap-3 px-4 py-2.5 text-base hover:bg-neutral-100 rounded-md ${
+						isActive('/messages') 
+							? 'bg-neutral-100 text-neutral-900 font-medium' 
+							: 'text-neutral-900'
+					}`}>
+					<MessageSquare size={20} strokeWidth={1.5} />
+					<span>Messages</span>
+				</Link>
+			</div>
+
+			<div className="border-t border-neutral-200 pt-4 pb-2">
+				<div className="flex items-center justify-between px-4 mb-2">
+					<span className={`text-base font-medium text-neutral-500 uppercase tracking-wider ${smoochSans.className}`}>Community</span>
+					<ChevronDown size={16} className="text-neutral-500" />
+				</div>
+				<div className="space-y-1">
+					<Link
+						href='/community/cie_checkpoint'
+						className={`flex items-center gap-3 px-4 py-2 text-base hover:bg-neutral-100 rounded-md ${
+							isActive('/community/cie_checkpoint') 
+								? 'bg-neutral-100 text-neutral-900 font-medium' 
+								: 'text-neutral-900'
+						}`}>
+						<div className='w-5 h-5 rounded-full bg-neutral-400 flex-shrink-0' />
+						<span>m/cie_checkpoint</span>
+					</Link>
+					<Link
+						href='/community/cie_igcse'
+						className={`flex items-center gap-3 px-4 py-2 text-base hover:bg-neutral-100 rounded-md ${
+							isActive('/community/cie_igcse') 
+								? 'bg-neutral-100 text-neutral-900 font-medium' 
+								: 'text-neutral-900'
+						}`}>
+						<div className='w-5 h-5 rounded-full bg-neutral-400 flex-shrink-0' />
+						<span>m/cie_igcse</span>
+					</Link>
+					<Link
+						href='/community/cie_aslevel'
+						className={`flex items-center gap-3 px-4 py-2 text-base hover:bg-neutral-100 rounded-md ${
+							isActive('/community/cie_aslevel') 
+								? 'bg-neutral-100 text-neutral-900 font-medium' 
+								: 'text-neutral-900'
+						}`}>
+						<div className='w-5 h-5 rounded-full bg-neutral-400 flex-shrink-0' />
+						<span>m/cie_aslevel</span>
+					</Link>
+					<Link
+						href='/community/cie_a2level'
+						className={`flex items-center gap-3 px-4 py-2 text-base hover:bg-neutral-100 rounded-md ${
+							isActive('/community/cie_a2level') 
+								? 'bg-neutral-100 text-neutral-900 font-medium' 
+								: 'text-neutral-900'
+						}`}>
+						<div className='w-5 h-5 rounded-full bg-neutral-400 flex-shrink-0' />
+						<span>m/cie_a2level</span>
+					</Link>
+				</div>
+			</div>
+
+			<div className="border-t border-neutral-200 pt-4 pb-2">
+				<div className="flex items-center justify-between px-4 mb-2">
+					<span className={`text-base font-medium text-neutral-500 uppercase tracking-wider ${smoochSans.className}`}>Resources</span>
+					<ChevronDown size={16} className="text-neutral-500" />
+				</div>
+				<div className="space-y-1">
+					<Link
+						href='/about'
+						className={`flex items-center gap-3 px-4 py-2 text-base hover:bg-neutral-100 rounded-md ${
+							isActive('/about') 
+								? 'bg-neutral-100 text-neutral-900 font-medium' 
+								: 'text-neutral-900'
+						}`}>
+						<Info size={20} strokeWidth={1.5} className="text-neutral-900" />
+						<span>About MathCom</span>
+					</Link>
+					<Link
+						href='/rules'
+						className={`flex items-center gap-3 px-4 py-2 text-base hover:bg-neutral-100 rounded-md ${
+							isActive('/rules') 
+								? 'bg-neutral-100 text-neutral-900 font-medium' 
+								: 'text-neutral-900'
+						}`}>
+						<Mail size={20} strokeWidth={1.5} className="text-neutral-900" />
+						<span>MathCom Rules</span>
+					</Link>
+					<Link
+						href='/help'
+						className={`flex items-center gap-3 px-4 py-2 text-base hover:bg-neutral-100 rounded-md ${
+							isActive('/help') 
+								? 'bg-neutral-100 text-neutral-900 font-medium' 
+								: 'text-neutral-900'
+						}`}>
+						<Download size={20} strokeWidth={1.5} className="text-neutral-900" />
+						<span>Help</span>
+					</Link>
+				</div>
+			</div>
 		</aside>
 	)
 }
 
-export default Navbar
+export default Navbar 

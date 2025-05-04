@@ -22,8 +22,8 @@ const Page = () => {
 	}
 
 	return (
-		<main className='px-6 sm:px-0 sm:pr-8 sm:pl-[28rem] pt-24 sm:pt-36 pb-8 flex flex-col md:flex-row items-start gap-5'>
-			<div className='bg-neutral-50 py-8 px-10 rounded-xl max-w-md w-full space-y-5 shadow-md border'>
+		<div className="flex items-start justify-center pt-[20vh] h-[calc(100vh-80px)]">
+			<div className='bg-neutral-100 py-8 px-10 rounded-xl max-w-md w-full space-y-5 shadow-sm border'>
 				<div className='space-y-2 text-center'>
 					<h1 className='font-bold text-2xl'>Log In</h1>
 					<p className='text-muted-foreground text-sm font-semibold'>
@@ -40,10 +40,11 @@ const Page = () => {
 						alt='google'
 						width={25}
 						height={25}
+						className="mr-2"
 					/>
 					Continue with Google
 				</Button>
-				<p className='text-sm text-muted-foreground mt-3 font-semibold'>
+				<p className='text-sm text-muted-foreground mt-3 font-semibold text-center'>
 					New to MathCom?{' '}
 					<Link
 						href='/signup'
@@ -52,7 +53,7 @@ const Page = () => {
 					</Link>
 				</p>
 			</div>
-		</main>
+		</div>
 	)
 }
 
