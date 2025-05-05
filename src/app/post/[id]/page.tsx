@@ -90,7 +90,8 @@ interface Post {
 const Page = () => {
 	const params = useParams();
 	const postId = params.id as string;
-	const commentInputRef = useRef<HTMLInputElement>(null);
+	const commentInputRef = useRef<HTMLTextAreaElement>(null);
+	const pillInputRef = useRef<HTMLInputElement>(null);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const votingInProgress = useRef<boolean>(false);
 	
@@ -105,13 +106,19 @@ const Page = () => {
 	const [newComment, setNewComment] = useState('');
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
+	const [replySubmitting, setReplySubmitting] = useState(false);
 	const [currentUser, setCurrentUser] = useState({ id: 'user123', username: 'Current User' }); // Mock user for demo
 	const [error, setError] = useState('');
 	const [loadingId, setLoadingId] = useState<string | null>(null);
 	const [localVotes, setLocalVotes] = useState<Record<string, boolean>>({});
-	const [replying, setReplying] = useState<{ commentId: string | null, username: string | null }>({ 
+	const [replying, setReplying] = useState<{ 
+		commentId: string | null, 
+		username: string | null,
+		replyId: string | null  // Add a replyId field to track which specific reply we're responding to
+	}>({ 
 		commentId: null, 
-		username: null 
+		username: null,
+		replyId: null
 	});
 	const [replyText, setReplyText] = useState('');
 	
@@ -150,7 +157,7 @@ const Page = () => {
 						const commentsQuery = query(
 							collection(db, 'comments'),
 							where('postId', '==', postId),
-							orderBy('createdAt', 'asc')
+							orderBy('createdAt', 'desc')
 						);
 						
 						return await getDocs(commentsQuery);
@@ -206,7 +213,7 @@ const Page = () => {
 					const sortedComments = [...commentsData].sort((a, b) => {
 						const timeA = a.createdAt?.seconds || 0;
 						const timeB = b.createdAt?.seconds || 0;
-						return timeA - timeB; // Sort in ascending order (oldest first)
+						return timeB - timeA; // Sort in descending order (newest first)
 					});
 					
 					setComments(sortedComments);
@@ -374,13 +381,14 @@ const Page = () => {
 	
 	const handleInputFocus = () => {
 		setIsExpanded(true);
-		
-		// Focus the textarea after it's shown
-		setTimeout(() => {
-			if (textareaRef.current) {
-				textareaRef.current.focus();
-			}
-		}, 100);
+	};
+
+	const handleInputBlur = (e: React.FocusEvent) => {
+		// Only collapse if it's empty and the related target is not within the comment container
+		// This prevents collapse when clicking the submit button
+		if (!newComment.trim() && !e.currentTarget.contains(e.relatedTarget as Node)) {
+			setIsExpanded(false);
+		}
 	};
 	
 	const handleCancel = () => {
@@ -389,23 +397,31 @@ const Page = () => {
 	};
 	
 	// Handle reply to comment
-	const handleReplyClick = (commentId: string, username: string) => {
+	const handleReplyClick = (commentId: string, username: string, replyId?: string) => {
 		// Set the reply text with the username and focus the comment input box
 		setReplyText(`@${username} `);
 		// Store the parent comment ID for when we submit
 		setReplying({ 
 			commentId, 
-			username 
+			username,
+			replyId: replyId || null
 		});
 		
-		// Scroll to comment box
+		// Let text area render before focusing
 		setTimeout(() => {
-			if (textareaRef.current) {
-				textareaRef.current.focus();
-				// Place cursor at the end of the text
-				const length = textareaRef.current.value.length;
-				textareaRef.current.setSelectionRange(length, length);
-				textareaRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+			const selector = replyId 
+				? `[data-reply-to="${commentId}"][data-reply-id="${replyId}"]`
+				: `[data-reply-to="${commentId}"]:not([data-reply-id])`;
+				
+			const replyBoxes = document.querySelectorAll(selector);
+			if (replyBoxes.length > 0) {
+				const textarea = replyBoxes[0].querySelector('textarea');
+				if (textarea) {
+					textarea.focus();
+					// Place cursor at the end of the text
+					const length = textarea.value.length;
+					textarea.setSelectionRange(length, length);
+				}
 			}
 		}, 100);
 	};
@@ -413,20 +429,26 @@ const Page = () => {
 	// Cancel reply
 	const handleCancelReply = () => {
 		setReplyText('');
-		setReplying({ commentId: null, username: null });
+		setReplying({ commentId: null, username: null, replyId: null });
 	};
 
 	// Submit a comment or reply
 	const submitComment = async () => {
 		const text = replyText || newComment;
-		if (!text.trim() || !post || submitting) return;
+		if (!text.trim() || !post || (replyText && replySubmitting) || (!replyText && submitting)) return;
 		
-		setSubmitting(true);
+		const isReply = replying.commentId !== null;
+		
+		if (isReply) {
+			setReplySubmitting(true);
+		} else {
+			setSubmitting(true);
+		}
+		
 		setError('');
 		
 		try {
 			// Check if this is a reply (has a parent comment ID)
-			const isReply = replying.commentId !== null;
 			
 			// Add comment to Firebase
 			const commentData = {
@@ -456,10 +478,10 @@ const Page = () => {
 				parentId: isReply && replying.commentId ? replying.commentId : undefined
 			};
 			
-			setComments(prev => [...prev, newCommentObj]);
+			setComments(prev => [newCommentObj, ...prev]);
 			setNewComment('');
 			setReplyText('');
-			setReplying({ commentId: null, username: null });
+			setReplying({ commentId: null, username: null, replyId: null });
 			
 			// Update post comment count in local state
 			setPost(prev => {
@@ -474,25 +496,42 @@ const Page = () => {
 			console.error('Error adding comment:', error);
 			setError(getFirebaseErrorMessage(error));
 		} finally {
-			setSubmitting(false);
+			if (isReply) {
+				setReplySubmitting(false);
+			} else {
+				setSubmitting(false);
+			}
 		}
 	};
 
 	// Get replies for a comment
 	const getRepliesForComment = (commentId: string) => {
 		const replies = comments.filter(comment => comment.parentId === commentId);
-		return replies;
+		// Sort replies chronologically (oldest first)
+		return replies.sort((a, b) => {
+			const timeA = a.createdAt?.seconds || 0;
+			const timeB = b.createdAt?.seconds || 0;
+			return timeA - timeB; // Sort in ascending order (oldest first)
+		});
 	};
 
 	if (loading) {
 		return (
-			<div className='flex flex-col space-y-6 pt-6 px-4'>
-				<Link href='/' className="flex items-center gap-x-2 text-gray-600 hover:text-gray-900 my-2">
-					<ArrowLeftCircleIcon />
-					<span>Back to Home</span>
-				</Link>
-				<div className='flex justify-center py-8'>
-					<p className='text-gray-500'>Loading post...</p>
+			<div className='flex w-full pl-8'>
+				<div className='w-full max-w-3xl px-4'>
+					<div className='space-y-6 pt-6'>
+						<Link href='/' className="flex items-center gap-x-2 text-gray-600 hover:text-gray-900 my-2">
+							<ArrowLeftCircleIcon />
+							<span>Back to Home</span>
+						</Link>
+						
+						<div className='flex flex-col gap-6 px-6 py-6'>
+							<div className='h-10 w-full max-w-md bg-neutral-100 animate-pulse rounded-md'></div>
+							<div className='h-40 w-full bg-neutral-100 animate-pulse rounded-md'></div>
+							<div className='h-20 w-full bg-neutral-100 animate-pulse rounded-md'></div>
+							<div className='h-6 w-40 bg-neutral-100 animate-pulse rounded-full'></div>
+						</div>
+					</div>
 				</div>
 			</div>
 		);
@@ -500,279 +539,374 @@ const Page = () => {
 
 	if (!post) {
 		return (
-			<div className='flex flex-col space-y-6 pt-6 px-4'>
-				<Link href='/' className="flex items-center gap-x-2 text-gray-600 hover:text-gray-900 my-2">
-					<ArrowLeftCircleIcon />
-					<span>Back to Home</span>
-				</Link>
-				<div className='flex flex-col items-center justify-center py-8 gap-4'>
-					<p className='text-red-500 font-medium'>Error loading post</p>
-					<p className='text-gray-500 text-sm'>{error}</p>
-					{error.includes('permission') && (
-						<p className='text-sm text-gray-600 max-w-md text-center'>
-							It looks like you don't have permission to access this content. You may need to sign in or contact an administrator.
-						</p>
-					)}
-					<Button 
-						variant="outline" 
-						onClick={() => window.location.reload()}
-						className="mt-2"
-					>
-						Try Again
-					</Button>
+			<div className='flex w-full pl-8'>
+				<div className='w-full max-w-3xl px-4'>
+					<div className='space-y-6 pt-6'>
+						<Link href='/' className="flex items-center gap-x-2 text-gray-600 hover:text-gray-900 my-2">
+							<ArrowLeftCircleIcon />
+							<span>Back to Home</span>
+						</Link>
+						<div className='flex flex-col items-center justify-center py-8 gap-4'>
+							<p className='text-red-500 font-medium'>Error loading post</p>
+							<p className='text-gray-500 text-sm'>{error}</p>
+							{error.includes('permission') && (
+								<p className='text-sm text-gray-600 max-w-md text-center'>
+									It looks like you don't have permission to access this content. You may need to sign in or contact an administrator.
+								</p>
+							)}
+							<Button 
+								variant="outline" 
+								onClick={() => window.location.reload()}
+								className="mt-2"
+							>
+								Try Again
+							</Button>
+						</div>
+					</div>
 				</div>
 			</div>
 		);
 	}
 
 	return (
-		<div className='flex flex-col space-y-6 pt-6 px-4'>
-			<Link href='/' className="flex items-center gap-x-2 text-gray-600 hover:text-gray-900 my-2">
-				<ArrowLeftCircleIcon />
-				<span>Back to Home</span>
-			</Link>
-			<div className='space-y-5'>
-				<div className='px-6 py-6 max-w-3xl space-y-3'>
-					<div className='flex items-center gap-x-3'>
-						{post.avatar ? (
-							<img
-								src={post.avatar}
-								alt='Avatar'
-								className='w-10 h-10 rounded-full object-cover bg-neutral-100'
-							/>
-						) : (
-							<div className='w-10 h-10 bg-neutral-100 rounded-full' />
-						)}
-						<div>
-							<h1 className='font-semibold text-sm'>
-								m/{post.community?.toLowerCase().replace(/\s/g, '_')}
-							</h1>
-							<div className='flex items-center gap-x-1 text-xs text-muted-foreground'>
-								<span>{post.username}</span>
-								<span className='mx-0.5'>•</span>
-								<span>
-									{post.createdAt?.seconds
-										? formatRelativeTime(post.createdAt.seconds * 1000)
-										: 'Just now'}
-								</span>
+		<div className='flex w-full pl-8'>
+			<div className='w-full max-w-3xl px-4'>
+				<div className='space-y-6 pt-6'>
+					<Link href='/' className="flex items-center gap-x-2 text-gray-600 hover:text-gray-900 my-2">
+						<ArrowLeftCircleIcon />
+						<span>Back to Home</span>
+					</Link>
+					<div className='space-y-5'>
+						<div className='space-y-3'>
+							<div className='flex items-center gap-x-3'>
+								{post.avatar ? (
+									<img
+										src={post.avatar}
+										alt='Avatar'
+										className='w-10 h-10 rounded-full object-cover bg-neutral-100'
+									/>
+								) : (
+									<div className='w-10 h-10 bg-neutral-100 rounded-full' />
+								)}
+								<div>
+									<h1 className='font-semibold text-sm'>
+										m/{post.community?.toLowerCase().replace(/\s/g, '_')}
+									</h1>
+									<div className='flex items-center gap-x-1 text-xs text-muted-foreground'>
+										<span>{post.username}</span>
+										<span className='mx-0.5'>•</span>
+										<span>
+											{post.createdAt?.seconds
+												? formatRelativeTime(post.createdAt.seconds * 1000)
+												: 'Just now'}
+										</span>
+									</div>
+								</div>
+							</div>
+							
+							<h1 className='text-lg font-bold'>{post.title}</h1>
+							<p className='text-sm'>{post.description}</p>
+							
+							{post.imageURL && (
+								<div className='w-full aspect-video bg-neutral-100 rounded-xl my-5'>
+									<img
+										src={post.imageURL}
+										alt='Uploaded image'
+										className='w-full h-full object-cover rounded-xl'
+									/>
+								</div>
+							)}
+							
+							{/* Interaction buttons */}
+							<div className='flex items-center gap-x-1 my-5'>
+								<button 
+									onClick={handleVote}
+									className={`flex items-center px-3 py-1.5 rounded-full transition-all gap-x-2 ${
+										voted 
+											? 'text-blue-600 bg-blue-50' 
+											: 'text-gray-500 hover:bg-gray-100'
+									}`}
+								>
+									<ArrowUp className={`w-5 h-5 transform transition-transform ${voted ? 'scale-110' : ''}`} />
+									<span className='font-medium text-sm'>{post.upvotes + (voted ? 1 : 0)}</span>
+								</button>
+								
+								<button 
+									className='flex items-center gap-x-2 px-3 py-1.5 rounded-full text-gray-500 hover:bg-gray-100'
+									onClick={() => {
+										if (commentInputRef.current) commentInputRef.current.focus();
+									}}
+								>
+									<MessageCircle className='w-5 h-5' />
+									<span className='text-sm'>{post.commentsCount}</span>
+								</button>
+								
+								<button 
+									onClick={handleShare}
+									className='flex items-center gap-x-2 px-3 py-1.5 rounded-full text-gray-500 hover:bg-gray-100'
+								>
+									<Share2 className='w-5 h-5' />
+									<span className='text-sm'>Share</span>
+								</button>
 							</div>
 						</div>
-					</div>
-					
-					<h1 className='text-lg font-bold'>{post.title}</h1>
-					<p className='text-sm'>{post.description}</p>
-					
-					{post.imageURL && (
-						<div className='w-full aspect-video bg-neutral-100 rounded-xl my-5'>
-							<img
-								src={post.imageURL}
-								alt='Uploaded image'
-								className='w-full h-full object-cover rounded-xl'
-							/>
+						
+						{/* Comments section */}
+						<div className='space-y-6'>
+							{/* Comment Input Field - Separate components for each state */}
+							{isExpanded ? (
+								// Expanded state - rectangular with textarea and button
+								<div className="rounded-xl border border-gray-200 bg-white py-3 px-4 flex flex-col space-y-2 mb-6">
+									<Textarea
+										ref={commentInputRef}
+										placeholder="Add your thoughts..."
+										className="flex-1 outline-none text-sm px-2 min-h-[40px] max-h-[120px] border-none shadow-none focus-visible:ring-0 resize-none"
+										value={newComment}
+										onChange={(e) => setNewComment(e.target.value)}
+										autoFocus
+									/>
+									<div className="flex justify-end">
+										<Button
+											size='sm'
+											variant="outline"
+											className='rounded-full mr-2'
+											onClick={() => {
+												setNewComment('');
+												setIsExpanded(false);
+											}}>
+											Cancel
+										</Button>
+										<Button
+											size='sm'
+											className='rounded-full bg-[#11244DB3] hover:bg-[#11244D] text-white px-6'
+											onClick={submitComment}
+											disabled={!newComment.trim() || submitting}>
+											{submitting ? 'Posting...' : 'Comment'}
+										</Button>
+									</div>
+								</div>
+							) : (
+								// Collapsed state - pill shaped input
+								<div 
+									className="rounded-full border border-gray-200 bg-white py-2 px-4 flex items-center mb-6 cursor-text"
+									onClick={handleInputFocus}
+								>
+									<input
+										ref={pillInputRef}
+										placeholder="Add your thoughts..."
+										className="flex-1 outline-none text-sm px-2 border-none shadow-none focus-visible:ring-0 bg-transparent"
+										onFocus={handleInputFocus}
+										readOnly
+									/>
+								</div>
+							)}
+
+							{/* Comments and replies list */}
+							{comments.length > 0 ? (
+								<div className="flex flex-col space-y-6">
+									{comments.filter(comment => !comment.parentId).map((comment) => (
+										<div 
+											key={comment.id} 
+											className='space-y-4 border-b border-black/15 pb-4 last:border-b-0'
+										>
+											<div>
+												<div className='flex items-center gap-x-3'>
+													{comment.avatar ? (
+														<img
+															src={comment.avatar}
+															alt='Avatar'
+															className='w-10 h-10 rounded-full object-cover bg-neutral-100'
+														/>
+													) : (
+														<div className='w-10 h-10 bg-neutral-100 rounded-full' />
+													)}
+													<div>
+														<h1 className='font-semibold text-sm'>{comment.username}</h1>
+														<div className='text-xs text-muted-foreground'>
+															{comment.createdAt?.seconds
+																? formatRelativeTime(comment.createdAt.seconds * 1000)
+																: 'Just now'}
+														</div>
+													</div>
+												</div>
+												<div className='pl-12 space-y-1 mt-2'>
+													<p className='text-sm'>{comment.text}</p>
+													<div className="flex items-center gap-2 mt-2">
+														<button
+															onClick={() => handleCommentVote(comment.id)}
+															className={`inline-flex items-center gap-x-1.5 px-2 py-1 rounded-full text-sm ${
+																commentVotes[comment.id] ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-100'
+															}`}>
+															<ArrowUp className={`w-4 h-4 ${commentVotes[comment.id] ? 'fill-blue-600' : ''}`} /> 
+															<span>{comment.upvotes + (commentVotes[comment.id] ? 1 : 0)}</span>
+														</button>
+														
+														<button
+															onClick={() => handleReplyClick(comment.id, comment.username)}
+															className="inline-flex items-center gap-x-1.5 px-2 py-1 rounded-full text-sm text-[#11244DB3] hover:bg-gray-100"
+														>
+															<Reply className="w-4 h-4" />
+															<span>Reply</span>
+														</button>
+													</div>
+													
+													{/* Inline reply box */}
+													{replying.commentId === comment.id && !replying.replyId && (
+														<div className='mt-4 space-y-3' data-reply-to={comment.id}>
+															<div className="relative bg-white border border-gray-200 rounded-xl p-4">
+																<div className="text-xs text-blue-600 font-medium mb-2">
+																	Replying to {replying.username}:
+																</div>
+																<Textarea
+																	placeholder="Write your reply..."
+																	className="border-none shadow-none focus-visible:ring-0 px-0 py-0 resize-y min-h-[40px] max-h-[100px]"
+																	value={replyText}
+																	onChange={(e) => setReplyText(e.target.value)}
+																/>
+																<div className="flex justify-end gap-2 mt-2">
+																	<Button
+																		size="sm"
+																		variant="outline"
+																		className="rounded-full"
+																		onClick={handleCancelReply}
+																	>
+																		Cancel
+																	</Button>
+																	<Button
+																		size="sm"
+																		className="rounded-full bg-[#11244DB3] hover:bg-[#11244D]"
+																		onClick={submitComment}
+																		disabled={!replyText.trim() || replySubmitting}
+																	>
+																		{replySubmitting ? "Posting..." : "Reply"}
+																	</Button>
+																</div>
+															</div>
+														</div>
+													)}
+												</div>
+											</div>
+											
+											{/* Replies to this comment */}
+											{getRepliesForComment(comment.id).length > 0 && (
+												<div className="pl-12 space-y-4">
+													{getRepliesForComment(comment.id).map(reply => (
+														<div key={reply.id} className="border-l-2 border-gray-200 pl-4">
+															<div className='flex items-center gap-x-2'>
+																{reply.avatar ? (
+																	<img
+																		src={reply.avatar}
+																		alt='Avatar'
+																		className='w-6 h-6 rounded-full object-cover bg-neutral-100'
+																	/>
+																) : (
+																	<div className='w-6 h-6 bg-neutral-100 rounded-full' />
+																)}
+																<div>
+																	<h1 className='font-medium text-xs'>{reply.username}</h1>
+																	<div className='text-xs text-muted-foreground'>
+																		{reply.createdAt?.seconds
+																			? formatRelativeTime(reply.createdAt.seconds * 1000)
+																			: 'Just now'}
+																	</div>
+																</div>
+															</div>
+															<div className='ml-8 mt-1'>
+																<p className='text-sm'>{reply.text}</p>
+																<div className="flex items-center gap-2 mt-1">
+																	<button
+																		onClick={() => handleCommentVote(reply.id)}
+																		className={`inline-flex items-center gap-x-1.5 px-2 py-1 rounded-full text-xs ${
+																			commentVotes[reply.id] ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-100'
+																		}`}>
+																		<ArrowUp className={`w-3 h-3 ${commentVotes[reply.id] ? 'fill-blue-600' : ''}`} /> 
+																		<span>{reply.upvotes + (commentVotes[reply.id] ? 1 : 0)}</span>
+																	</button>
+																	
+																	<button
+																		onClick={() => handleReplyClick(comment.id, reply.username, reply.id)}
+																		className="inline-flex items-center gap-x-1.5 px-2 py-1 rounded-full text-xs text-[#11244DB3] hover:bg-gray-100"
+																	>
+																		<Reply className="w-3 h-3" />
+																		<span>Reply</span>
+																	</button>
+																</div>
+																
+																{/* Inline reply to a reply */}
+																{replying.commentId === comment.id && replying.replyId === reply.id && (
+																	<div className='mt-3 space-y-3' data-reply-to={comment.id} data-reply-id={reply.id}>
+																		<div className="relative bg-white border border-gray-200 rounded-xl p-3">
+																			<div className="text-xs text-blue-600 font-medium mb-2">
+																				Replying to {replying.username}:
+																			</div>
+																			<Textarea
+																				placeholder="Write your reply..."
+																				className="border-none shadow-none focus-visible:ring-0 px-0 py-0 resize-y min-h-[40px] max-h-[100px]"
+																				value={replyText}
+																				onChange={(e) => setReplyText(e.target.value)}
+																			/>
+																			<div className="flex justify-end gap-2 mt-2">
+																				<Button
+																					size="sm"
+																					variant="outline"
+																					className="rounded-full"
+																					onClick={handleCancelReply}
+																				>
+																					Cancel
+																				</Button>
+																				<Button
+																					size="sm"
+																					className="rounded-full bg-[#11244DB3] hover:bg-[#11244D]"
+																					onClick={submitComment}
+																					disabled={!replyText.trim() || replySubmitting}
+																				>
+																					{replySubmitting ? "Posting..." : "Reply"}
+																				</Button>
+																			</div>
+																		</div>
+																	</div>
+																)}
+															</div>
+														</div>
+													))}
+												</div>
+											)}
+										</div>
+									))}
+								</div>
+							) : null}
 						</div>
-					)}
-					
-					{/* Interaction buttons */}
-					<div className='flex items-center gap-x-1 my-5'>
-						<button 
-							onClick={handleVote}
-							className={`flex items-center px-3 py-1.5 rounded-full transition-all gap-x-2 ${
-								voted 
-									? 'text-blue-600 bg-blue-50' 
-									: 'text-gray-500 hover:bg-gray-100'
-							}`}
-						>
-							<ArrowUp className={`w-5 h-5 transform transition-transform ${voted ? 'scale-110' : ''}`} />
-							<span className='font-medium text-sm'>{post.upvotes + (voted ? 1 : 0)}</span>
-						</button>
-						
-						<button 
-							className='flex items-center gap-x-2 px-3 py-1.5 rounded-full text-gray-500 hover:bg-gray-100'
-							onClick={() => {
-								if (commentInputRef.current) commentInputRef.current.focus();
-							}}
-						>
-							<MessageCircle className='w-5 h-5' />
-							<span className='text-sm'>{post.commentsCount}</span>
-						</button>
-						
-						<button 
-							onClick={handleShare}
-							className='flex items-center gap-x-2 px-3 py-1.5 rounded-full text-gray-500 hover:bg-gray-100'
-						>
-							<Share2 className='w-5 h-5' />
-							<span className='text-sm'>Share</span>
-						</button>
 					</div>
 				</div>
 				
-				{/* Comments section */}
-				<div className='px-6 py-4 max-w-3xl space-y-6'>
-					{/* Comment Input Field - Moved to top of comments section */}
-					<div className='rounded-full bg-white border border-gray-200 py-2 px-4 flex items-center space-x-2 mb-6'>
-						<input
-							ref={commentInputRef}
-							placeholder="Join the conversation"
-							className="flex-1 outline-none text-sm px-2"
-							value={newComment}
-							onChange={(e) => setNewComment(e.target.value)}
-						/>
-						<Button
-							size='sm'
-							className='rounded-full bg-[#11244DB3] hover:bg-[#11244D] text-white px-6'
-							onClick={submitComment}
-							disabled={!newComment.trim() || submitting}>
-							{submitting ? 'Posting...' : 'Comment'}
-						</Button>
-					</div>
-
-					{/* Comments and replies list */}
-					{comments.length > 0 ? (
-						<div className="flex flex-col space-y-6">
-							{comments.filter(comment => !comment.parentId).map((comment) => (
-								<div 
-									key={comment.id} 
-									className='space-y-4 border-b border-neutral-200/30 pb-4 last:border-b-0'
+				{/* Share Dialog */}
+				<Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+					<DialogContent className="sm:max-w-md">
+						<DialogHeader>
+							<DialogTitle className="text-center">Share Post</DialogTitle>
+						</DialogHeader>
+						<div className="flex flex-col space-y-4 py-4">
+							<div className="flex items-center space-x-2 bg-gray-100 p-3 rounded-md">
+								<span className="text-sm text-gray-700 overflow-hidden text-ellipsis flex-1">{shareUrl}</span>
+								<Button variant="outline" size="sm" onClick={copyToClipboard}>
+									Copy
+								</Button>
+							</div>
+							<p className="text-center text-sm text-gray-500">
+								Link copied to clipboard!
+							</p>
+							<div className="flex justify-center">
+								<Button 
+									variant="default" 
+									className="bg-[#11244DB3] hover:bg-[#11244D] rounded-full px-8" 
+									onClick={() => setShareDialogOpen(false)}
 								>
-									<div>
-										<div className='flex items-center gap-x-3'>
-											{comment.avatar ? (
-												<img
-													src={comment.avatar}
-													alt='Avatar'
-													className='w-10 h-10 rounded-full object-cover bg-neutral-100'
-												/>
-											) : (
-												<div className='w-10 h-10 bg-neutral-100 rounded-full' />
-											)}
-											<div>
-												<h1 className='font-semibold text-sm'>{comment.username}</h1>
-												<div className='text-xs text-muted-foreground'>
-													{comment.createdAt?.seconds
-														? formatRelativeTime(comment.createdAt.seconds * 1000)
-														: 'Just now'}
-												</div>
-											</div>
-										</div>
-										<div className='pl-12 space-y-1 mt-2'>
-											<p className='text-sm'>{comment.text}</p>
-											<div className="flex items-center gap-2 mt-2">
-												<button
-													onClick={() => handleCommentVote(comment.id)}
-													className={`inline-flex items-center gap-x-1.5 px-2 py-1 rounded-full text-sm ${
-														commentVotes[comment.id] ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-100'
-													}`}>
-													<ArrowUp className={`w-4 h-4 ${commentVotes[comment.id] ? 'fill-blue-600' : ''}`} /> 
-													<span>{comment.upvotes + (commentVotes[comment.id] ? 1 : 0)}</span>
-												</button>
-												
-												<button
-													onClick={() => handleReplyClick(comment.id, comment.username)}
-													className="inline-flex items-center gap-x-1.5 px-2 py-1 rounded-full text-sm text-[#11244DB3] hover:bg-gray-100"
-												>
-													<Reply className="w-4 h-4" />
-													<span>Reply</span>
-												</button>
-											</div>
-										</div>
-									</div>
-									
-									{/* Replies to this comment */}
-									{getRepliesForComment(comment.id).length > 0 && (
-										<div className="pl-12 space-y-4">
-											{getRepliesForComment(comment.id).map(reply => (
-												<div key={reply.id} className="border-l-2 border-gray-200 pl-4">
-													<div className='flex items-center gap-x-2'>
-														{reply.avatar ? (
-															<img
-																src={reply.avatar}
-																alt='Avatar'
-																className='w-6 h-6 rounded-full object-cover bg-neutral-100'
-															/>
-														) : (
-															<div className='w-6 h-6 bg-neutral-100 rounded-full' />
-														)}
-														<div>
-															<h1 className='font-medium text-xs'>{reply.username}</h1>
-															<div className='text-xs text-muted-foreground'>
-																{reply.createdAt?.seconds
-																	? formatRelativeTime(reply.createdAt.seconds * 1000)
-																	: 'Just now'}
-															</div>
-														</div>
-													</div>
-													<div className='ml-8 mt-1'>
-														<p className='text-sm'>{reply.text}</p>
-														<div className="flex items-center gap-2 mt-1">
-															<button
-																onClick={() => handleCommentVote(reply.id)}
-																className={`inline-flex items-center gap-x-1.5 px-2 py-1 rounded-full text-xs ${
-																	commentVotes[reply.id] ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-100'
-																}`}>
-																<ArrowUp className={`w-3 h-3 ${commentVotes[reply.id] ? 'fill-blue-600' : ''}`} /> 
-																<span>{reply.upvotes + (commentVotes[reply.id] ? 1 : 0)}</span>
-															</button>
-															
-															<button
-																onClick={() => handleReplyClick(comment.id, reply.username)}
-																className="inline-flex items-center gap-x-1.5 px-2 py-1 rounded-full text-xs text-[#11244DB3] hover:bg-gray-100"
-															>
-																<Reply className="w-3 h-3" />
-																<span>Reply</span>
-															</button>
-														</div>
-													</div>
-												</div>
-											))}
-										</div>
-									)}
-								</div>
-							))}
-						</div>
-					) : null}
-					
-					{/* Reply input - Only shown when replying */}
-					{replyText && (
-						<div className='bg-white space-y-3 pt-4 border-t border-gray-100 mt-4'>
-							<div className="relative">
-								<div className="absolute top-3 left-4 flex items-center text-sm text-blue-600 font-medium">
-									Replying to {replying.username}:
-								</div>
-								<Textarea
-									ref={textareaRef}
-									placeholder="Write your reply..."
-									className="border border-gray-200 focus:border-gray-300 shadow-none focus-visible:ring-0 rounded-md pt-10 pb-4 px-4"
-									value={replyText}
-									onChange={(e) => setReplyText(e.target.value)}
-								/>
-							</div>
-							{error && (
-								<div className="px-4 text-sm text-red-500">
-									{error}
-								</div>
-							)}
-							<div className='flex justify-end items-center px-4'>
-								<div className='flex gap-x-2'>
-									<Button
-										size='sm'
-										variant='outline'
-										className='rounded-full'
-										onClick={handleCancelReply}>
-										Cancel Reply
-									</Button>
-									<Button
-										size='sm'
-										variant='default'
-										className='rounded-full bg-[#11244DB3] hover:bg-[#11244D] text-white'
-										onClick={submitComment}
-										disabled={!replyText.trim() || submitting}>
-										{submitting ? 'Posting...' : 'Reply'}
-									</Button>
-								</div>
+									OK
+								</Button>
 							</div>
 						</div>
-					)}
-				</div>
+					</DialogContent>
+				</Dialog>
 			</div>
 		</div>
 	);
