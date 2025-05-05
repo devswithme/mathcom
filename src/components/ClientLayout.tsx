@@ -41,7 +41,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         )}
         
         {/* Main content - always adjusted for desktop */}
-        <main className="w-full transition-all duration-300 ease-in-out px-4 pt-[66px] pb-4 md:ml-64">
+        <main className="w-full transition-all duration-300 ease-in-out px-4 pt-[86px] pb-4 md:ml-64">
           {children}
         </main>
       </div>

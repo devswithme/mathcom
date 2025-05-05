@@ -182,140 +182,153 @@ export default function Home() {
 	}
 
 	return (
-		<main className="px-6 sm:px-0 sm:pr-8 sm:pl-72 pt-24 pb-8 flex flex-col">
-			{loading ? (
-				<>
-					<PostSkeleton withImage={false} />
-					<PostSkeleton withImage={false} />
-					<PostSkeleton withImage={false} />
-				</>
-			) : posts.length === 0 ? (
-				<p className='text-center text-muted-foreground text-sm font-medium'>
-					No questions have been posted yet. Be the first to{' '}
-					<Link href='/ask' className='underline text-[#11244DB2]'>
-						ask a question
-					</Link>
-					!
-				</p>
-			) : (
-				<div className="flex flex-col pt-4 gap-y-5">
-					{posts.map((post, index) => (
-						<Link
-							href={`/post/${post.id}`}
-							key={post.id}
-							className="bg-neutral-50 p-6 rounded-xl max-w-3xl space-y-3 hover:border">
-							{/* User Info */}
-							<div className='flex items-center gap-x-3'>
-								{post.avatar ? (
-									<Image
-										src={post.avatar}
-										alt='Avatar'
-                    width={40}
-                    height={40}
-										className='w-10 h-10 rounded-full object-cover bg-neutral-100'
-									/>
-								) : (
-									<div className='w-10 h-10 bg-neutral-100 rounded-full' />
-								)}
-								<div>
-									<h1 className='font-semibold text-sm'>
-										m/{post.community?.toLowerCase().replace(/\s/g, '_')}
-									</h1>
-									<div className='flex items-center gap-x-1 text-xs text-muted-foreground'>
-										<span>{post.username || 'Unknown'}</span>
-										<span className='mx-0.5'>•</span>
-										<span>
-											{post.createdAt?.seconds
-												? formatRelativeTime(post.createdAt.seconds * 1000)
-												: 'Just now'}
-										</span>
-									</div>
-								</div>
-							</div>
-
-							{/* Post Content */}
-							<h1 className='text-lg font-bold'>{post.title}</h1>
-							<p className='text-sm'>{post.description}</p>
-
-							{/* Uploaded Image */}
-							{post.imageURL && (
-								<div className='w-full aspect-video bg-neutral-100 rounded-xl my-5'>
-									<Image
-										src={post.imageURL}
-										alt='Uploaded image'
-                    width={800}
-                    height={400}
-										className='w-full h-full object-cover rounded-xl'
-									/>
-								</div>
-							)}
-
-							{/* Buttons */}
-							<div className='flex items-center gap-x-1 mt-4'>
-								<button 
-									onClick={(e) => handleVote(e, post.id)}
-									className={`flex items-center px-3 py-1.5 rounded-full transition-all gap-x-2 ${
-										votedPosts[post.id] 
-											? 'text-blue-600 bg-blue-50' 
-											: 'text-gray-500 hover:bg-gray-100'
-									}`}
-								>
-									<ArrowUp className={`w-5 h-5 transform transition-transform ${votedPosts[post.id] ? 'scale-110' : ''}`} />
-									<span className='font-medium text-sm'>{(post.upvotes || 0) + (votedPosts[post.id] ? 1 : 0)}</span>
-								</button>
-								
-								<button
-									onClick={(e) => handleCommentClick(e, post.id)}
-									className='flex items-center gap-x-2 px-3 py-1.5 rounded-full text-gray-500 hover:bg-gray-100'
-								>
-									<MessageCircle className='w-5 h-5' />
-									<span className='text-sm'>{post.commentsCount || 0}</span>
-								</button>
-								
-								<button 
-									onClick={(e) => handleShare(e, post.id)}
-									className='flex items-center gap-x-2 px-3 py-1.5 rounded-full text-gray-500 hover:bg-gray-100'
-								>
-									<Share2 className='w-5 h-5' />
-									<span className='text-sm'>Share</span>
-								</button>
-							</div>
+		<div className="flex w-full pl-8">
+			<div className="w-full max-w-3xl px-4">
+				{loading ? (
+					<>
+						<PostSkeleton withImage={false} />
+						<PostSkeleton withImage={false} />
+						<PostSkeleton withImage={false} />
+					</>
+				) : posts.length === 0 ? (
+					<p className='text-center text-muted-foreground text-sm font-medium'>
+						No questions have been posted yet. Be the first to{' '}
+						<Link href='/ask' className='underline text-[#11244DB2]'>
+							ask a question
 						</Link>
-					))}
-				</div>
-			)}
-
-			{/* Share Dialog */}
-			<Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-				<DialogContent className="sm:max-w-md">
-					<DialogHeader>
-						<DialogTitle className="text-center">Share Post</DialogTitle>
-						<DialogDescription className="text-center">
-							Share this post with others by copying the link
-						</DialogDescription>
-					</DialogHeader>
-					<div className="flex flex-col space-y-4 py-4">
-						<div className="flex items-center space-x-2 bg-gray-100 p-3 rounded-md">
-							<span className="text-sm text-gray-700 overflow-hidden text-ellipsis flex-1">{shareUrl}</span>
-							<Button variant="outline" size="sm" onClick={copyToClipboard}>
-								Copy
-							</Button>
-						</div>
-						<p className="text-center text-sm text-gray-500">
-							Link copied to clipboard!
-						</p>
-						<div className="flex justify-center">
-							<Button 
-								variant="default" 
-								className="bg-[#11244DB3] hover:bg-[#11244D] rounded-full px-8" 
-								onClick={() => setShareDialogOpen(false)}
+						!
+					</p>
+				) : (
+					<div className="flex flex-col">
+						{posts.map((post, index) => (
+							<div 
+								key={post.id}
+								className="border-b border-black/20 last:border-b-0 group"
 							>
-								OK
-							</Button>
-						</div>
+								<Link
+									href={`/post/${post.id}`}
+									className={`block px-4 py-6 pb-8 max-w-3xl space-y-3 relative ${index === 0 ? 'pt-8' : ''}`}
+								>
+									{/* Hover effect overlay */}
+									<div className="absolute inset-x-0 top-2 bottom-2 bg-neutral-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none" />
+									
+									{/* Content wrapper */}
+									<div className="relative z-10">
+										{/* User Info */}
+										<div className='flex items-center gap-x-3'>
+											{post.avatar ? (
+												<Image
+													src={post.avatar}
+													alt='Avatar'
+													width={40}
+													height={40}
+													className='w-10 h-10 rounded-full object-cover bg-neutral-100'
+												/>
+											) : (
+												<div className='w-10 h-10 bg-neutral-100 rounded-full' />
+											)}
+											<div>
+												<h1 className='font-semibold text-sm'>
+													m/{post.community?.toLowerCase().replace(/\s/g, '_')}
+												</h1>
+												<div className='flex items-center gap-x-1 text-xs text-muted-foreground'>
+													<span>{post.username || 'Unknown'}</span>
+													<span className='mx-0.5'>•</span>
+													<span>
+														{post.createdAt?.seconds
+															? formatRelativeTime(post.createdAt.seconds * 1000)
+															: 'Just now'}
+													</span>
+												</div>
+											</div>
+										</div>
+
+										{/* Post Content */}
+										<h1 className='text-lg font-bold'>{post.title}</h1>
+										<p className='text-sm'>{post.description}</p>
+
+										{/* Uploaded Image */}
+										{post.imageURL && (
+											<div className='w-full aspect-video bg-neutral-100 rounded-xl my-5'>
+												<Image
+													src={post.imageURL}
+													alt='Uploaded image'
+													width={800}
+													height={400}
+													className='w-full h-full object-cover rounded-xl'
+												/>
+											</div>
+										)}
+
+										{/* Buttons */}
+										<div className='flex items-center gap-x-1 mt-4'>
+											<button 
+												onClick={(e) => handleVote(e, post.id)}
+												className={`flex items-center px-3 py-1.5 rounded-full transition-all gap-x-2 ${
+													votedPosts[post.id] 
+														? 'text-blue-600 bg-blue-50' 
+														: 'text-gray-500 hover:bg-gray-100'
+												}`}
+											>
+												<ArrowUp className={`w-5 h-5 transform transition-transform ${votedPosts[post.id] ? 'scale-110' : ''}`} />
+												<span className='font-medium text-sm'>{(post.upvotes || 0) + (votedPosts[post.id] ? 1 : 0)}</span>
+											</button>
+											
+											<button
+												onClick={(e) => handleCommentClick(e, post.id)}
+												className='flex items-center gap-x-2 px-3 py-1.5 rounded-full text-gray-500 hover:bg-gray-100'
+											>
+												<MessageCircle className='w-5 h-5' />
+												<span className='text-sm'>{post.commentsCount || 0}</span>
+											</button>
+											
+											<button 
+												onClick={(e) => handleShare(e, post.id)}
+												className='flex items-center gap-x-2 px-3 py-1.5 rounded-full text-gray-500 hover:bg-gray-100'
+											>
+												<Share2 className='w-5 h-5' />
+												<span className='text-sm'>Share</span>
+											</button>
+										</div>
+									</div>
+								</Link>
+							</div>
+						))}
 					</div>
-				</DialogContent>
-			</Dialog>
-		</main>
+				)}
+
+				{/* Share Dialog */}
+				<Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+					<DialogContent className="sm:max-w-md">
+						<DialogHeader>
+							<DialogTitle className="text-center">Share Post</DialogTitle>
+							<DialogDescription className="text-center">
+								Share this post with others by copying the link
+							</DialogDescription>
+						</DialogHeader>
+						<div className="flex flex-col space-y-4 py-4">
+							<div className="flex items-center space-x-2 bg-gray-100 p-3 rounded-md">
+								<span className="text-sm text-gray-700 overflow-hidden text-ellipsis flex-1">{shareUrl}</span>
+								<Button variant="outline" size="sm" onClick={copyToClipboard}>
+									Copy
+								</Button>
+							</div>
+							<p className="text-center text-sm text-gray-500">
+								Link copied to clipboard!
+							</p>
+							<div className="flex justify-center">
+								<Button 
+									variant="default" 
+									className="bg-[#11244DB3] hover:bg-[#11244D] rounded-full px-8" 
+									onClick={() => setShareDialogOpen(false)}
+								>
+									OK
+								</Button>
+							</div>
+						</div>
+					</DialogContent>
+				</Dialog>
+			</div>
+		</div>
 	)
 }

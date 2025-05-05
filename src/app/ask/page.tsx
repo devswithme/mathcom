@@ -56,15 +56,22 @@ export default function AskPage() {
   const [showLoginAlert, setShowLoginAlert] = useState(false);
   const [postAnonymously, setPostAnonymously] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
-      if (u) setUser(u);
+      if (u) {
+        setUser(u);
+      } else {
+        // Redirect to login if user is not authenticated
+        router.push('/login');
+      }
+      setLoading(false);
     });
     return () => unsubscribe();
-  }, []);
+  }, [router]);
 
   const handlePost = async () => {
     if (!title.trim()) {
@@ -150,189 +157,205 @@ export default function AskPage() {
     }
   };
 
-  return (
-    <main className="px-6 sm:px-0 sm:pr-8 sm:pl-72 pt-24 pb-8 grid grid-cols-1 gap-y-5">
-      <h1 className="text-2xl font-bold">Ask a question</h1>
-
-      {/* Community Dropdown */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button className="w-fit bg-neutral-100 flex items-center gap-x-2 py-2 pl-3 pr-4 rounded-full border border-black/10 hover:bg-neutral-200 transition text-sm font-semibold">
-            <div className="w-6 h-6 bg-neutral-200 rounded-full" />
-            {selectedCommunity}
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
-          </button>
-        </DropdownMenuTrigger>
-
-        <DropdownMenuContent
-          align="start"
-          className="w-40 rounded-xl p-1 shadow-md"
-        >
-          {communities.map((c) => (
-            <DropdownMenuItem
-              key={c}
-              onClick={() => setSelectedCommunity(c)}
-              className={`cursor-pointer px-3 py-2 rounded-md text-sm ${
-                selectedCommunity === c ? "bg-neutral-200 font-semibold" : ""
-              }`}
-            >
-              {c}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* Title */}
-      <div className="max-w-2xl border border-black p-4 rounded-2xl">
-        <h1 className="text-sm font-medium">
-          Title<span className="text-red-600">*</span>
-        </h1>
-        <Input
-          className="border-none shadow-none focus-visible:ring-0 px-0"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+  // Show loading state or return null while checking authentication
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="animate-spin h-8 w-8 text-[#11244DB2]" />
       </div>
+    );
+  }
 
-      {/* Description + Upload */}
-      <div className="max-w-2xl border border-black p-4 rounded-2xl flex gap-x-4 items-start">
-        <div className="w-full">
-          <h1 className="text-sm font-medium">Description</h1>
-          <Textarea
+  // Don't render anything if user is not authenticated (will redirect)
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="flex w-full pl-8">
+      <div className="w-full max-w-2xl px-4">
+        <h1 className="text-2xl font-bold">Ask a question</h1>
+
+        {/* Community Dropdown */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="w-fit bg-neutral-100 flex items-center gap-x-2 py-2 pl-3 pr-4 rounded-full border border-black/10 hover:bg-neutral-200 transition text-sm font-semibold mt-5">
+              <div className="w-6 h-6 bg-neutral-200 rounded-full" />
+              {selectedCommunity}
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </DropdownMenuTrigger>
+
+          <DropdownMenuContent
+            align="start"
+            className="w-40 rounded-xl p-1 shadow-md"
+          >
+            {communities.map((c) => (
+              <DropdownMenuItem
+                key={c}
+                onClick={() => setSelectedCommunity(c)}
+                className={`cursor-pointer px-3 py-2 rounded-md text-sm ${
+                  selectedCommunity === c ? "bg-neutral-200 font-semibold" : ""
+                }`}
+              >
+                {c}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Title */}
+        <div className="max-w-2xl border border-black p-4 rounded-2xl mt-5">
+          <h1 className="text-sm font-medium">
+            Title<span className="text-red-600">*</span>
+          </h1>
+          <Input
             className="border-none shadow-none focus-visible:ring-0 px-0"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
           />
         </div>
-        <div className="flex-1/6 aspect-square rounded-xl border border-black relative overflow-hidden group">
-          {imagePreview ? (
-            <>
-              <>
-                <div
-                  onDoubleClick={() => setShowImageModal(true)}
-                  className="relative w-full h-full group cursor-zoom-in z-10"
-                >
-                  <Image
-                    src={imagePreview}
-                    alt="Preview"
-                    width={200}
-                    height={200}
-                    className="w-full h-full object-cover rounded-xl transition-transform duration-200 group-hover:scale-105"
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setImagePreview(null);
-                      setImageFile(null);
-                    }}
-                    className="absolute top-1 right-1 w-6 h-6 bg-black/70 text-white rounded-full flex items-center justify-center text-xs hover:bg-black transition z-20"
-                    title="Remove image"
-                  >
-                    ×
-                  </button>
-                </div>
 
-                {/* Modal to show full image */}
-                <Dialog open={showImageModal} onOpenChange={setShowImageModal}>
-                  <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">
+        {/* Description + Upload */}
+        <div className="max-w-2xl border border-black p-4 rounded-2xl flex gap-x-4 items-start mt-5">
+          <div className="w-full">
+            <h1 className="text-sm font-medium">Description</h1>
+            <Textarea
+              className="border-none shadow-none focus-visible:ring-0 px-0"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <div className="flex-1/6 aspect-square rounded-xl border border-black relative overflow-hidden group">
+            {imagePreview ? (
+              <>
+                <>
+                  <div
+                    onDoubleClick={() => setShowImageModal(true)}
+                    className="relative w-full h-full group cursor-zoom-in z-10"
+                  >
                     <Image
                       src={imagePreview}
-                      alt="Full Image"
-                      width={800}
-                      height={800}
-                      className="w-full h-auto object-contain"
+                      alt="Preview"
+                      width={200}
+                      height={200}
+                      className="w-full h-full object-cover rounded-xl transition-transform duration-200 group-hover:scale-105"
                     />
-                  </DialogContent>
-                </Dialog>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setImagePreview(null);
+                        setImageFile(null);
+                      }}
+                      className="absolute top-1 right-1 w-6 h-6 bg-black/70 text-white rounded-full flex items-center justify-center text-xs hover:bg-black transition z-20"
+                      title="Remove image"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  {/* Modal to show full image */}
+                  <Dialog open={showImageModal} onOpenChange={setShowImageModal}>
+                    <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">
+                      <Image
+                        src={imagePreview}
+                        alt="Full Image"
+                        width={800}
+                        height={800}
+                        className="w-full h-auto object-contain"
+                      />
+                    </DialogContent>
+                  </Dialog>
+                </>
               </>
-            </>
-          ) : (
-            <>
-              <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                <ImagePlus className="w-6 h-6 text-muted-foreground" />
-              </div>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0] || null;
-                  setImageFile(file);
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onloadend = () =>
-                      setImagePreview(reader.result as string);
-                    reader.readAsDataURL(file);
-                  } else {
-                    setImagePreview(null);
-                  }
-                }}
-                className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer z-20"
+            ) : (
+              <>
+                <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+                  <ImagePlus className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setImageFile(file);
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () =>
+                        setImagePreview(reader.result as string);
+                      reader.readAsDataURL(file);
+                    } else {
+                      setImagePreview(null);
+                    }
+                  }}
+                  className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer z-20"
+                />
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex justify-between items-center max-w-2xl mt-5">
+          <div className="min-h-[24px] flex items-center">
+            <label className="flex items-center gap-x-2 text-sm">
+              <Checkbox
+                id="anonymous"
+                checked={postAnonymously}
+                onCheckedChange={(checked: boolean | 'indeterminate') =>
+                  setPostAnonymously(Boolean(checked))
+                }
               />
-            </>
-          )}
+              Post Anonymously
+            </label>
+          </div>
+
+          <div className="flex items-center gap-x-3">
+            <Button
+              size="lg"
+              variant="outline"
+              className="rounded-full"
+              onClick={handlePost}
+              disabled={isPosting}
+            >
+              {isPosting && <Loader2 className="animate-spin w-4 h-4 mr-2" />}
+              {isPosting ? "Posting..." : "Post"}
+            </Button>
+
+            <Button size="lg" className="bg-[#7F0000] rounded-full !font-bold">
+              Ask AI
+            </Button>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="w-5 h-5 cursor-pointer text-gray-600" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs p-3 text-sm">
+                  Get a tailored response from MathCom AI — designed to guide you step-by-step through your math question.
+                  (Your question won&apos;t be posted publicly unless you choose to.)
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
+
+        <AlertDialog open={showLoginAlert} onOpenChange={setShowLoginAlert}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Login Required</AlertDialogTitle>
+              <AlertDialogDescription>
+                You must be logged in to post a question.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setShowLoginAlert(false)}>
+                Close
+              </AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
-
-      {/* Buttons */}
-      <div className="flex justify-between items-center max-w-2xl">
-        <div className="min-h-[24px] flex items-center">
-          <label className="flex items-center gap-x-2 text-sm">
-            <Checkbox
-              id="anonymous"
-              checked={postAnonymously}
-              onCheckedChange={(checked) =>
-                setPostAnonymously(Boolean(checked))
-              }
-            />
-            Post Anonymously
-          </label>
-        </div>
-
-        <div className="flex items-center gap-x-3">
-          <Button
-            size="lg"
-            variant="outline"
-            className="rounded-full"
-            onClick={handlePost}
-            disabled={isPosting}
-          >
-            {isPosting && <Loader2 className="animate-spin w-4 h-4 mr-2" />}
-            {isPosting ? "Posting..." : "Post"}
-          </Button>
-
-          <Button size="lg" className="bg-[#7F0000] rounded-full !font-bold">
-            Ask AI
-          </Button>
-
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <Info className="w-5 h-5 cursor-pointer text-gray-600" />
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs p-3 text-sm">
-                Get a tailored response from MathCom AI — designed to guide you step-by-step through your math question.
-                (Your question won&apos;t be posted publicly unless you choose to.)
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </div>
-
-      <AlertDialog open={showLoginAlert} onOpenChange={setShowLoginAlert}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Login Required</AlertDialogTitle>
-            <AlertDialogDescription>
-              You must be logged in to post a question.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setShowLoginAlert(false)}>
-              Close
-            </AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </main>
+    </div>
   );
 }

@@ -16,29 +16,33 @@ import {
 } from "lucide-react";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { usePathname } from 'next/navigation';
 import { useNavbar } from '@/context/NavbarContext';
 import { Quicksand, Smooch_Sans } from 'next/font/google';
+import { useRouter } from "next/navigation";
 
 const quicksand = Quicksand({ subsets: ['latin'] });
 const smoochSans = Smooch_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'] });
 
 const Navbar = ({ className }: { className?: string }) => {
 	const [photoURL, setPhotoURL] = useState<string | null>(null);
+	const [user, setUser] = useState<any>(null);
 	const pathname = usePathname();
 	const { isNavbarOpen } = useNavbar();
 	const [isMounted, setIsMounted] = useState(false);
+	const router = useRouter();
 	
 	const [communityOpen, setCommunityOpen] = useState(true);
 	const [resourcesOpen, setResourcesOpen] = useState(true);
 
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (user) => {
-			if (user && user.photoURL) {
+			if (user) {
 				setPhotoURL(user.photoURL);
+				setUser(user);
 			} else {
 				setPhotoURL(null);
+				setUser(null);
 			}
 		});
 		
@@ -64,22 +68,6 @@ const Navbar = ({ className }: { className?: string }) => {
 
 	return (
 		<aside className={`${className} flex flex-col text-gray-800 ${quicksand.className}`}>
-			{/* Profile section */}
-			{photoURL && (
-				<div className="flex items-center gap-3 px-2 pb-4">
-					<Avatar>
-						<AvatarImage
-							src={photoURL ?? ""}
-							alt="Profile"
-							className="w-10 h-10 rounded-full object-cover border"
-						/>
-						<AvatarFallback>?</AvatarFallback>
-					</Avatar>
-
-					<div className="text-sm font-medium line-clamp-1">My Profile</div>
-				</div>
-			)}
-
 			<div className="py-3">
 				<Link
 					href='/'

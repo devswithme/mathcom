@@ -73,29 +73,31 @@ export default function ExplorePage() {
   ]
 
   return (
-    <main className="container py-6 max-w-5xl">
-      <h1 className="text-2xl font-bold mb-8">Explore Communities</h1>
-      
-      <div className="mb-12">
-        <h2 className="text-xl font-semibold mb-4">Cambridge Curriculum</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {cambridgeCommunities.map((community) => (
-            <CommunityCard 
-              key={community.slug}
-              name={community.name}
-              slug={community.slug}
-              members={community.members}
-              description={community.description}
-            />
-          ))}
+    <div className="flex w-full pl-8">
+      <div className="w-full max-w-4xl px-4">
+        <h1 className="text-2xl font-bold mb-8">Explore Communities</h1>
+        
+        <div className="mb-12">
+          <h2 className="text-xl font-semibold mb-4">Cambridge Curriculum</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {cambridgeCommunities.map((community) => (
+              <CommunityCard 
+                key={community.slug}
+                name={community.name}
+                slug={community.slug}
+                members={community.members}
+                description={community.description}
+              />
+            ))}
+          </div>
         </div>
-      </div>
 
-      <div className="flex justify-center">
-        <div className="py-3 px-6 bg-gray-100 rounded-full text-gray-600 text-sm font-medium">
-          More coming soon!
+        <div className="flex justify-center">
+          <div className="py-3 px-6 bg-gray-100 rounded-full text-gray-600 text-sm font-medium">
+            More coming soon!
+          </div>
         </div>
       </div>
-    </main>
+    </div>
   )
 } 
