@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   title: "MathCom AI",
   description:
     "Your Personal Math Tutor, Reimagined - Built for students who want understanding, not just answers.",
+  icons: {
+    icon: "mathcom.svg",
+  },
 };
 
 export default function RootLayout({
