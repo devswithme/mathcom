@@ -65,7 +65,13 @@ function Hero() {
               className="size-24 !opacity-100"
               disabled
             >
-              <Image src="/mathcom.svg" alt="logo" width={90} height={90} />
+              <Image
+                src="/mathcom.svg"
+                alt="logo"
+                width={200}
+                height={200}
+                unoptimized
+              />
             </Button>
           </div>
           <div className="flex flex-col">
@@ -98,9 +104,14 @@ function Hero() {
             </h1>
 
             <p className="text-lg md:text-xl leading-relaxed tracking-tight text-muted-foreground max-w-2xl text-center mb-6">
-              <span className="font-medium">Early access drops <span className="font-semibold text-[#3E4B68]">May 14</span></span>
+              <span className="font-medium">
+                Early access drops{" "}
+                <span className="font-semibold text-[#3E4B68]">May 14</span>
+              </span>
               <br />
-              <span className="font-medium text-sm md:text-base">Join the waitlist now</span>
+              <span className="font-medium text-sm md:text-base">
+                Join the waitlist now
+              </span>
             </p>
             <Form {...form}>
               <form

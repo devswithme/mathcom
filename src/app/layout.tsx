@@ -7,7 +7,7 @@ const quickSand = Quicksand({
 });
 
 export const metadata: Metadata = {
-  title: "MathCom AI",
+  title: "MathCom",
   description:
     "Your Personal Math Tutor, Reimagined - Built for students who want understanding, not just answers.",
   icons: {
