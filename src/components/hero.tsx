@@ -55,7 +55,7 @@ function Hero() {
   }
 
   return (
-    <div className="w-full px-8">
+    <div className="w-full px-8 absolute z-50 inset-0">
       <div className="container mx-auto">
         <div className="flex gap-6 py-12 lg:py-16 items-center justify-center flex-col relative">
           <div className="mb-4">
