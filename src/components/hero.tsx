@@ -68,17 +68,17 @@ function Hero() {
               className="size-24 !opacity-100"
               disabled
             >
-              <Image src="/mathcom.svg" alt="logo" width={90} height={90} />
+              <Image src="/mathcomlogo.png" alt="logo" width={90} height={90} />
             </Button>
           </div>
 
-          <p className="text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-xl font-regular text-spektr-cyan-50 max-w-full px-1 mx-auto text-center mb-[-0.5rem] md:mb-[-0.5rem] whitespace-nowrap overflow-hidden text-ellipsis">
+          <p className="text-[10px] text-sm md:text-base lg:text-xl font-regular text-spektr-cyan-50 max-w-full px-1 mx-auto text-center mb-[-0.5rem] md:mb-[-0.5rem] whitespace-nowrap overflow-hidden text-ellipsis">
             The ultimate AI-augmented human learning platform.
           </p>
 
           <div className="flex flex-col items-center w-full">
             <h1 className="text-4xl sm:text-5xl md:text-7xl max-w-4xl tracking-tight text-center font-regular mt-0 mb-6 md:mb-8 text-balance px-6 sm:px-4">
-              <span className="text-spektr-cyan-50 text-[1.5rem] xs:text-xl sm:text-3xl md:text-5xl whitespace-nowrap mt-[0.25rem] mb-[0.1rem] md:mt-[0.25rem] md:mb-[0.1rem]">
+              <span className="text-spektr-cyan-50 text-[1.5rem] text-3xl md:text-5xl whitespace-nowrap mt-[0.25rem] mb-[0.1rem] md:mt-[0.25rem] md:mb-[0.1rem]">
                 For students who want
               </span>
               <span className="relative flex w-full justify-center overflow-hidden text-center h-[4.5rem] md:h-[4.5rem]">
