@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import axios from "axios";
 import { z } from "zod";
 import { cn } from "@/lib/utils";
+import Popup from "./ui/popup";
 
 function Hero() {
   const [titleNumber, setTitleNumber] = useState(0);
@@ -38,6 +39,7 @@ function Hero() {
   }, [titleNumber, titles]);
 
   const [loading, setLoading] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     mode: "onChange",
@@ -52,6 +54,7 @@ function Hero() {
     await axios.post(`${process.env.NEXT_PUBLIC_APP_URL}/api/data`, values);
     form.reset();
     setLoading(false);
+    setShowPopup(true);
   }
 
   return (
@@ -65,24 +68,24 @@ function Hero() {
               className="size-24 !opacity-100"
               disabled
             >
-              <Image
-                src="/mathcom.svg"
-                alt="logo"
-                width={200}
-                height={200}
-                unoptimized
-              />
+              <Image src="/mathcom.svg" alt="logo" width={90} height={90} />
             </Button>
           </div>
-          <div className="flex flex-col">
-            <h1 className="text-5xl md:text-7xl max-w-3xl tracking-tighter text-center font-regular mb-16">
-              <span className="text-spektr-cyan-50">For students who want</span>
-              <span className="relative flex w-full justify-center overflow-hidden text-center md:pb-4 md:pt-1">
-                &nbsp;
+
+          <p className="text-[10px] xs:text-xs sm:text-sm md:text-base lg:text-xl font-regular text-spektr-cyan-50 max-w-full px-1 mx-auto text-center mb-[-0.5rem] md:mb-[-0.5rem] whitespace-nowrap overflow-hidden text-ellipsis">
+            The ultimate AI-augmented human learning platform.
+          </p>
+
+          <div className="flex flex-col items-center w-full">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl max-w-4xl tracking-tight text-center font-regular mt-0 mb-6 md:mb-8 text-balance px-6 sm:px-4">
+              <span className="text-spektr-cyan-50 text-[1.5rem] xs:text-xl sm:text-3xl md:text-5xl whitespace-nowrap mt-[0.25rem] mb-[0.1rem] md:mt-[0.25rem] md:mb-[0.1rem]">
+                For students who want
+              </span>
+              <span className="relative flex w-full justify-center overflow-hidden text-center h-[4.5rem] md:h-[4.5rem]">
                 {titles.map((title, index) => (
                   <motion.span
                     key={index}
-                    className="absolute font-semibold"
+                    className="absolute font-semibold text-[#3E4B68] text-[1.8rem] md:text-[3.5rem] leading-tight w-full left-0 right-0"
                     initial={{ opacity: 0, y: "-100" }}
                     transition={{ type: "spring", stiffness: 50 }}
                     animate={
@@ -116,21 +119,21 @@ function Hero() {
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="grid grid-cols-1 sm:grid-cols-3 gap-4 z-20 max-w-xl mx-auto w-full"
+                className="flex flex-col sm:flex-row items-center justify-center gap-2 z-20 max-w-[30rem] mx-auto w-full mt-2 mb-4"
               >
-                <div className="sm:col-span-2">
+                <div className="w-full sm:flex-1">
                   <FormField
                     control={form.control}
                     name="email"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="w-full">
                         <FormControl>
                           <Input
                             autoFocus
                             autoComplete="off"
                             placeholder="Enter your email"
                             {...field}
-                            className="focus-visible:ring-offset-0 focus-visible:ring-border focus-visible:ring-1"
+                            className="focus-visible:ring-offset-0 focus-visible:ring-border focus-visible:ring-1 w-full"
                           />
                         </FormControl>
                       </FormItem>
@@ -144,13 +147,13 @@ function Hero() {
                     loading
                   }
                   className={cn(
-                    "text-white transition-colors",
+                    "text-white transition-colors w-full sm:w-auto",
                     form.watch("email") && !form.formState.errors.email
                       ? "bg-[#3E4B68]/90 hover:bg-[#3E4B68]"
                       : "bg-[#3E4B68]/70 hover:bg-[#3E4B68]/80"
                   )}
                 >
-                  Join{loading && "ing"} the Waitlist{" "}
+                  Join{loading && "ing"}{" "}
                   {loading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
@@ -162,6 +165,11 @@ function Hero() {
           </div>
         </div>
       </div>
+      <Popup
+        isOpen={showPopup}
+        onClose={() => setShowPopup(false)}
+        message="You’re on the list! We’ll send you an email when early access launches."
+      />
     </div>
   );
 }
