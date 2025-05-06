@@ -65,27 +65,32 @@ function Hero() {
             <Button
               variant="ghost"
               size="icon"
-              className="size-24 !opacity-100"
+              className="size-32 !opacity-100"
               disabled
             >
-              <Image src="/mathcomlogo.png" alt="logo" width={90} height={90} />
+              <Image
+                src="/mathcomlogo.png"
+                alt="logo"
+                width={120}
+                height={120}
+              />
             </Button>
           </div>
 
-          <p className="text-[10px] text-sm md:text-base lg:text-xl font-regular text-spektr-cyan-50 max-w-full px-1 mx-auto text-center mb-[-0.5rem] md:mb-[-0.5rem] whitespace-nowrap overflow-hidden text-ellipsis">
+          <p className="text-[10px] text-sm md:text-base lg:text-xl font-regular text-spektr-cyan-50 max-w-full px-1 mx-auto text-center mb-[-0.5rem] md:mb-[-0.5rem] text-ellipsis">
             The ultimate AI-augmented human learning platform.
           </p>
 
           <div className="flex flex-col items-center w-full">
             <h1 className="text-4xl sm:text-5xl md:text-7xl max-w-4xl tracking-tight text-center font-regular mt-0 mb-6 md:mb-8 text-balance px-6 sm:px-4">
-              <span className="text-spektr-cyan-50 text-[1.5rem] text-3xl md:text-5xl whitespace-nowrap mt-[0.25rem] mb-[0.1rem] md:mt-[0.25rem] md:mb-[0.1rem]">
+              <span className="text-spektr-cyan-50 text-3xl md:text-5xl whitespace-nowrap mt-[0.25rem] mb-[0.1rem] md:mt-[0.25rem] md:mb-[0.1rem]">
                 For students who want
               </span>
               <span className="relative flex w-full justify-center overflow-hidden text-center h-[4.5rem] md:h-[4.5rem]">
                 {titles.map((title, index) => (
                   <motion.span
                     key={index}
-                    className="absolute font-semibold text-[#3E4B68] text-[1.8rem] md:text-[3.5rem] leading-tight w-full left-0 right-0"
+                    className="absolute font-semibold text-[#3E4B68] text-3xl md:text-5xl leading-tight w-full left-0 right-0"
                     initial={{ opacity: 0, y: "-100" }}
                     transition={{ type: "spring", stiffness: 50 }}
                     animate={
@@ -119,7 +124,7 @@ function Hero() {
             <Form {...form}>
               <form
                 onSubmit={form.handleSubmit(onSubmit)}
-                className="flex flex-col sm:flex-row items-center justify-center gap-2 z-20 max-w-[30rem] mx-auto w-full mt-2 mb-4"
+                className="flex flex-col sm:flex-row items-center justify-center gap-4 z-20 max-w-[30rem] mx-auto w-full mt-2 mb-4"
               >
                 <div className="w-full sm:flex-1">
                   <FormField
