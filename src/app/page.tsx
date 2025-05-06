@@ -12,7 +12,9 @@ const Page = () => {
       secondColor="127, 0, 0"
       thirdColor="255, 200, 87"
       fourthColor="250, 247, 245"
-      pointerColor="127, 0, 0"
+      fifthColor="180, 50, 50"
+      size="100%"
+      blendingValue="soft-light"
     >
       <Hero />
     </BackgroundGradientAnimation>
