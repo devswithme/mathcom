@@ -10,19 +10,28 @@ import {
 	Share2,
 	Send,
 	Reply,
+	X,
 } from 'lucide-react'
 import Link from 'next/link'
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
+	DialogDescription,
 } from "@/components/ui/dialog"
 import { db } from '@/lib/firebase'
 import { collection, doc, getDoc, getDocs, addDoc, updateDoc, increment, query, orderBy, where, serverTimestamp } from 'firebase/firestore'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter as useNextRouter } from 'next/navigation'
+import { useRouter } from 'next/router'
 import { getFirebaseErrorMessage, safeFetchWithFallback } from '@/lib/firebase-utils'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
+import { toast } from 'sonner'
+import LoginRequired from '@/components/LoginRequired'
+import LoginPopup from '@/components/LoginPopup'
+import SimpleShareDialog from '@/components/SimpleShareDialog'
 
 // Function to format relative time
 const formatRelativeTime = (timestamp: number): string => {
@@ -87,8 +96,18 @@ interface Post {
 	commentsCount: number;
 }
 
+// MentionComponent - makes @ mentions undeletable and styled differently
+const MentionTag: React.FC<{username: string}> = ({ username }) => {
+	return (
+		<span className="text-blue-600 font-medium inline-flex items-center bg-blue-50 rounded px-1 py-0.5 mr-1 whitespace-nowrap">
+			@{username}
+		</span>
+	);
+};
+
 const Page = () => {
 	const params = useParams();
+	const router = useNextRouter();
 	const postId = params.id as string;
 	const commentInputRef = useRef<HTMLTextAreaElement>(null);
 	const pillInputRef = useRef<HTMLInputElement>(null);
@@ -107,7 +126,7 @@ const Page = () => {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const [replySubmitting, setReplySubmitting] = useState(false);
-	const [currentUser, setCurrentUser] = useState({ id: 'user123', username: 'Current User' }); // Mock user for demo
+	const [currentUser, setCurrentUser] = useState<{ id: string, username: string } | null>(null);
 	const [error, setError] = useState('');
 	const [loadingId, setLoadingId] = useState<string | null>(null);
 	const [localVotes, setLocalVotes] = useState<Record<string, boolean>>({});
@@ -121,6 +140,22 @@ const Page = () => {
 		replyId: null
 	});
 	const [replyText, setReplyText] = useState('');
+	const [showLoginDialog, setShowLoginDialog] = useState(false);
+	const [showLoginPopup, setShowLoginPopup] = useState(false);
+	const [loginDialogMessage, setLoginDialogMessage] = useState('You need to be logged in to comment.');
+	const [loginRedirectPath, setLoginRedirectPath] = useState('/');
+	
+	// Listen for auth state changes
+	useEffect(() => {
+		const unsubscribe = onAuthStateChanged(auth, (user) => {
+			if (user) {
+				setCurrentUser({ id: user.uid, username: user.displayName || 'User' });
+			} else {
+				setCurrentUser(null);
+			}
+		});
+		return () => unsubscribe();
+	}, []);
 	
 	// Fetch post data and comments
 	useEffect(() => {
@@ -137,12 +172,23 @@ const Page = () => {
 					const userRef = doc(db, 'users', postData.userId);
 					const userSnap = await getDoc(userRef);
 					const userData = userSnap.exists() ? userSnap.data() : {};
+
+					let finalUsername = postData.username;
+					let finalAvatar = postData.avatar;
+
+					if (postData.username === "Anonymous User") {
+						finalUsername = "Anonymous User";
+						finalAvatar = "/defaultprofile.png";
+					} else {
+						finalUsername = userData.username || 'Unknown';
+						finalAvatar = userData.avatarUrl || '/defaultprofile.png';
+					}
 					
 					setPost({
 						id: postSnap.id,
 						...postData,
-						username: userData.username || 'Unknown',
-						avatar: userData.avatarUrl || '',
+						username: finalUsername,
+						avatar: finalAvatar,
 						upvotes: postData.upvotes || 0,
 						commentsCount: postData.commentsCount || 0
 					} as Post);
@@ -183,16 +229,32 @@ const Page = () => {
 							const comment = commentDoc.data();
 							const commentUserId = comment.userId;
 							
-							// Get comment user data
-							const commentUserRef = doc(db, 'users', commentUserId);
-							const commentUserSnap = await getDoc(commentUserRef);
-							const commentUserData = commentUserSnap.exists() ? commentUserSnap.data() : {};
+							let commentUsername = comment.username;
+							let commentAvatar = comment.avatar;
+
+							if (comment.username === "Anonymous User") {
+								commentUsername = "Anonymous User";
+								commentAvatar = "/defaultprofile.png";
+							} else {
+								// Get comment user data
+								const commentUserRef = doc(db, 'users', commentUserId);
+								const commentUserSnap = await getDoc(commentUserRef);
+								const commentUserData = commentUserSnap.exists() ? commentUserSnap.data() : {};
+								
+								commentUsername = commentUserData.username || 'Unknown';
+								// Get profile picture from Firebase Auth if this is the current user
+								let avatarUrl = commentUserData.avatarUrl || '/defaultprofile.png';
+								if (auth.currentUser && auth.currentUser.uid === commentUserId) {
+									avatarUrl = auth.currentUser.photoURL || commentUserData.avatarUrl || '/defaultprofile.png';
+								}
+								commentAvatar = avatarUrl;
+							}
 							
 							return {
 								id: commentDoc.id,
 								...comment,
-								username: commentUserData.username || 'Unknown',
-								avatar: commentUserData.avatarUrl || '',
+								username: commentUsername,
+								avatar: commentAvatar,
 								upvotes: comment.upvotes || 0,
 								parentId: comment.parentId || null // Ensure parentId is explicitly null if not present
 							} as Comment;
@@ -264,6 +326,11 @@ const Page = () => {
 	
 	// Handle post vote
 	const handleVote = async () => {
+		if (!currentUser) {
+			setLoginDialogMessage('You need to be logged in to upvote posts.');
+			setShowLoginDialog(true);
+			return;
+		}
 		if (!post || votingInProgress.current) return;
 		
 		// Set voting in progress immediately to prevent double clicks
@@ -373,9 +440,7 @@ const Page = () => {
 	const copyToClipboard = () => {
 		navigator.clipboard.writeText(shareUrl)
 			.then(() => {
-				setTimeout(() => {
-					setShareDialogOpen(false);
-				}, 1500);
+				// Don't auto-close the dialog
 			});
 	};
 	
@@ -396,11 +461,14 @@ const Page = () => {
 		setNewComment('');
 	};
 	
-	// Handle reply to comment
+	// Modified handleReplyClick to remove the @ from the text
 	const handleReplyClick = (commentId: string, username: string, replyId?: string) => {
-		// Set the reply text with the username and focus the comment input box
-		setReplyText(`@${username} `);
-		// Store the parent comment ID for when we submit
+		if (!currentUser) {
+			setLoginDialogMessage('You need to be logged in to reply.');
+			setShowLoginDialog(true);
+			return;
+		}
+		// Store the parent comment ID and username
 		setReplying({ 
 			commentId, 
 			username,
@@ -418,9 +486,6 @@ const Page = () => {
 				const textarea = replyBoxes[0].querySelector('textarea');
 				if (textarea) {
 					textarea.focus();
-					// Place cursor at the end of the text
-					const length = textarea.value.length;
-					textarea.setSelectionRange(length, length);
 				}
 			}
 		}, 100);
@@ -434,10 +499,20 @@ const Page = () => {
 
 	// Submit a comment or reply
 	const submitComment = async () => {
-		const text = replyText || newComment;
-		if (!text.trim() || !post || (replyText && replySubmitting) || (!replyText && submitting)) return;
+		if (!currentUser) {
+			toast('You must be signed in to comment.');
+			return;
+		}
 		
+		let text = replyText || newComment;
 		const isReply = replying.commentId !== null;
+		
+		// Add the username to the beginning of the text for replies
+		if (isReply && replying.username) {
+			text = `@${replying.username} ${text}`;
+		}
+		
+		if (!text.trim() || (replyText && replySubmitting) || (!replyText && submitting)) return;
 		
 		if (isReply) {
 			setReplySubmitting(true);
@@ -474,6 +549,7 @@ const Page = () => {
 				id: Date.now().toString(), // Temporary ID until reload
 				...commentData,
 				username: currentUser.username,
+				avatar: auth.currentUser?.photoURL || "", // Include current user's avatar
 				createdAt: { seconds: Math.floor(Date.now() / 1000) }, // Temporary timestamp
 				parentId: isReply && replying.commentId ? replying.commentId : undefined
 			};
@@ -572,10 +648,13 @@ const Page = () => {
 		<div className='flex w-full pl-8'>
 			<div className='w-full max-w-3xl px-4'>
 				<div className='space-y-6 pt-6'>
-					<Link href='/' className="flex items-center gap-x-2 text-gray-600 hover:text-gray-900 my-2">
+					<button 
+						onClick={() => router.back()} 
+						className="flex items-center gap-x-2 text-gray-600 hover:text-gray-900 my-2 bg-transparent border-0"
+					>
 						<ArrowLeftCircleIcon />
-						<span>Back to Home</span>
-					</Link>
+						<span>Back</span>
+					</button>
 					<div className='space-y-5'>
 						<div className='space-y-3'>
 							<div className='flex items-center gap-x-3'>
@@ -634,7 +713,19 @@ const Page = () => {
 								<button 
 									className='flex items-center gap-x-2 px-3 py-1.5 rounded-full text-gray-500 hover:bg-gray-100'
 									onClick={() => {
-										if (commentInputRef.current) commentInputRef.current.focus();
+										if (!currentUser) {
+											setLoginDialogMessage('You need to be logged in to comment on posts.');
+											setShowLoginDialog(true);
+											return;
+										}
+										
+										setIsExpanded(true);
+										// Use a small timeout to ensure the textarea is rendered before focusing
+										setTimeout(() => {
+											if (commentInputRef.current) {
+												commentInputRef.current.focus();
+											}
+										}, 0);
 									}}
 								>
 									<MessageCircle className='w-5 h-5' />
@@ -652,53 +743,55 @@ const Page = () => {
 						</div>
 						
 						{/* Comments section */}
-						<div className='space-y-6'>
-							{/* Comment Input Field - Separate components for each state */}
-							{isExpanded ? (
-								// Expanded state - rectangular with textarea and button
-								<div className="rounded-xl border border-gray-200 bg-white py-3 px-4 flex flex-col space-y-2 mb-6">
-									<Textarea
-										ref={commentInputRef}
-										placeholder="Add your thoughts..."
-										className="flex-1 outline-none text-sm px-2 min-h-[40px] max-h-[120px] border-none shadow-none focus-visible:ring-0 resize-none"
-										value={newComment}
-										onChange={(e) => setNewComment(e.target.value)}
-										autoFocus
-									/>
-									<div className="flex justify-end">
-										<Button
-											size='sm'
-											variant="outline"
-											className='rounded-full mr-2'
-											onClick={() => {
-												setNewComment('');
-												setIsExpanded(false);
-											}}>
-											Cancel
-										</Button>
-										<Button
-											size='sm'
-											className='rounded-full bg-[#11244DB3] hover:bg-[#11244D] text-white px-6'
-											onClick={submitComment}
-											disabled={!newComment.trim() || submitting}>
-											{submitting ? 'Posting...' : 'Comment'}
-										</Button>
+						<div className="space-y-6">
+							{/* Comment Input Field - Only show if signed in */}
+							{currentUser && (
+								isExpanded ? (
+									// Expanded state - rectangular with textarea and button
+									<div className="rounded-xl border border-gray-200 bg-white py-3 px-4 flex flex-col space-y-2 mb-6">
+										<Textarea
+											ref={commentInputRef}
+											placeholder="Add your thoughts..."
+											className="flex-1 outline-none text-sm px-2 min-h-[40px] max-h-[120px] border-none shadow-none focus-visible:ring-0 resize-none"
+											value={newComment}
+											onChange={(e) => setNewComment(e.target.value)}
+											autoFocus
+										/>
+										<div className="flex justify-end">
+											<Button
+												size='sm'
+												variant="outline"
+												className='rounded-full mr-2'
+												onClick={() => {
+													setNewComment('');
+													setIsExpanded(false);
+												}}>
+												Cancel
+											</Button>
+											<Button
+												size='sm'
+												className='rounded-full bg-[#11244DB3] hover:bg-[#11244D] text-white px-6'
+												onClick={submitComment}
+												disabled={!newComment.trim() || submitting}>
+												{submitting ? 'Posting...' : 'Comment'}
+											</Button>
+										</div>
 									</div>
-								</div>
-							) : (
-								// Collapsed state - pill shaped input
-								<div 
-									className="rounded-full border border-gray-200 bg-white py-2 px-4 flex items-center mb-6 cursor-text"
-									onClick={handleInputFocus}
-								>
-									<input
-										ref={pillInputRef}
-										placeholder="Add your thoughts..."
-										className="flex-1 outline-none text-sm px-2 border-none shadow-none focus-visible:ring-0 bg-transparent"
-										onFocus={handleInputFocus}
-										readOnly
-									/>
-								</div>
+								) : (
+									// Collapsed state - pill shaped input
+									<div 
+										className="rounded-full border border-gray-200 bg-white py-2 px-4 flex items-center mb-6 cursor-text"
+										onClick={handleInputFocus}
+									>
+										<input
+											ref={pillInputRef}
+											placeholder="Add your thoughts..."
+											className="flex-1 outline-none text-sm px-2 border-none shadow-none focus-visible:ring-0 bg-transparent"
+											onFocus={handleInputFocus}
+											readOnly
+										/>
+									</div>
+								)
 							)}
 
 							{/* Comments and replies list */}
@@ -730,7 +823,17 @@ const Page = () => {
 													</div>
 												</div>
 												<div className='pl-12 space-y-1 mt-2'>
-													<p className='text-sm'>{comment.text}</p>
+													<p className='text-sm'>
+														{comment.text.split(' ').map((word, i) => {
+															if (word.startsWith('@')) {
+																const username = word.substring(1);
+																return <React.Fragment key={i}>
+																	<MentionTag username={username} />{' '}
+																</React.Fragment>;
+															}
+															return word + ' ';
+														})}
+													</p>
 													<div className="flex items-center gap-2 mt-2">
 														<button
 															onClick={() => handleCommentVote(comment.id)}
@@ -754,8 +857,8 @@ const Page = () => {
 													{replying.commentId === comment.id && !replying.replyId && (
 														<div className='mt-4 space-y-3' data-reply-to={comment.id}>
 															<div className="relative bg-white border border-gray-200 rounded-xl p-4">
-																<div className="text-xs text-blue-600 font-medium mb-2">
-																	Replying to {replying.username}:
+																<div className="text-xs font-medium mb-2">
+																	Replying to <MentionTag username={replying.username || ""} />
 																</div>
 																<Textarea
 																	placeholder="Write your reply..."
@@ -812,7 +915,17 @@ const Page = () => {
 																</div>
 															</div>
 															<div className='ml-8 mt-1'>
-																<p className='text-sm'>{reply.text}</p>
+																<p className='text-sm'>
+																	{reply.text.split(' ').map((word, i) => {
+																		if (word.startsWith('@')) {
+																			const username = word.substring(1);
+																			return <React.Fragment key={i}>
+																				<MentionTag username={username} />{' '}
+																			</React.Fragment>;
+																		}
+																		return word + ' ';
+																	})}
+																</p>
 																<div className="flex items-center gap-2 mt-1">
 																	<button
 																		onClick={() => handleCommentVote(reply.id)}
@@ -836,8 +949,8 @@ const Page = () => {
 																{replying.commentId === comment.id && replying.replyId === reply.id && (
 																	<div className='mt-3 space-y-3' data-reply-to={comment.id} data-reply-id={reply.id}>
 																		<div className="relative bg-white border border-gray-200 rounded-xl p-3">
-																			<div className="text-xs text-blue-600 font-medium mb-2">
-																				Replying to {replying.username}:
+																			<div className="text-xs font-medium mb-2">
+																				Replying to <MentionTag username={replying.username || ""} />
 																			</div>
 																			<Textarea
 																				placeholder="Write your reply..."
@@ -879,34 +992,25 @@ const Page = () => {
 					</div>
 				</div>
 				
-				{/* Share Dialog */}
-				<Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
-					<DialogContent className="sm:max-w-md">
-						<DialogHeader>
-							<DialogTitle className="text-center">Share Post</DialogTitle>
-						</DialogHeader>
-						<div className="flex flex-col space-y-4 py-4">
-							<div className="flex items-center space-x-2 bg-gray-100 p-3 rounded-md">
-								<span className="text-sm text-gray-700 overflow-hidden text-ellipsis flex-1">{shareUrl}</span>
-								<Button variant="outline" size="sm" onClick={copyToClipboard}>
-									Copy
-								</Button>
-							</div>
-							<p className="text-center text-sm text-gray-500">
-								Link copied to clipboard!
-							</p>
-							<div className="flex justify-center">
-								<Button 
-									variant="default" 
-									className="bg-[#11244DB3] hover:bg-[#11244D] rounded-full px-8" 
-									onClick={() => setShareDialogOpen(false)}
-								>
-									OK
-								</Button>
-							</div>
-						</div>
-					</DialogContent>
-				</Dialog>
+				{/* Improved Share Dialog */}
+				<SimpleShareDialog open={shareDialogOpen} onClose={() => setShareDialogOpen(false)} />
+
+				{/* Login Required Dialog */}
+				<LoginRequired 
+					isOpen={showLoginDialog} 
+					onClose={() => setShowLoginDialog(false)}
+					message={loginDialogMessage}
+					redirectTo={loginRedirectPath}
+					onLogin={() => {
+						setShowLoginDialog(false);
+						setShowLoginPopup(true);
+					}}
+				/>
+				<LoginPopup 
+					isOpen={showLoginPopup} 
+					onClose={() => setShowLoginPopup(false)} 
+					redirectTo={loginRedirectPath}
+				/>
 			</div>
 		</div>
 	);

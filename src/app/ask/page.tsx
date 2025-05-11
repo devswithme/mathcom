@@ -1,28 +1,29 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ChevronDown, ImagePlus, Info, Loader2 } from "lucide-react";
-import { db, auth, storage } from "@/lib/firebase";
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { ChevronDown, ImagePlus, Info, Loader2, Trash } from 'lucide-react';
+import QuillEditor from '@/components/QuillEditor';
+import { db, auth, storage } from '@/lib/firebase';
 import {
   addDoc,
   collection,
   serverTimestamp,
   doc,
   getDoc,
-} from "firebase/firestore";
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { v4 as uuid } from "uuid";
-import Image from "next/image";
+} from 'firebase/firestore';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { v4 as uuid } from 'uuid';
+import Image from 'next/image';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -31,34 +32,53 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogCancel,
-} from "@/components/ui/alert-dialog";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
+} from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/tooltip';
+// FormattingToolbar no longer needed with Quill
+import LatexEditor from '@/components/LatexEditor';
 
-const communities = ["Checkpoint", "IGCSE", "A Level"];
+const communityOptions = [
+  { label: 'm/cie_checkpoint', value: 'cie_checkpoint' },
+  { label: 'm/cie_igcse', value: 'cie_igcse' },
+  { label: 'm/cie_alevel', value: 'cie_alevel' },
+];
+
+// Add a mapping for community avatars
+const communityAvatars: Record<string, string> = {
+  cie_checkpoint: '/community_avatars/cie_checkpoint.png',
+  cie_igcse: '/community_avatars/cie_igcse.png',
+  cie_alevel: '/community_avatars/cie_alevel.png',
+};
 
 export default function AskPage() {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [selectedCommunity, setSelectedCommunity] = useState(communities[0]);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  
+  // Get the community from URL query parameter or default to "cie_checkpoint"
+  const communityFromURL = searchParams.get('community');
+  const defaultCommunity = communityOptions.find(
+    option => option.value === communityFromURL
+  ) || communityOptions[0];
+
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [selectedCommunity, setSelectedCommunity] = useState(defaultCommunity.value);
   const [user, setUser] = useState<User | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [showImageModal, setShowImageModal] = useState(false);
   const [showLoginAlert, setShowLoginAlert] = useState(false);
   const [postAnonymously, setPostAnonymously] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  const router = useRouter();
+  const [showInfoModal, setShowInfoModal] = useState(false);
+  // Preview mode no longer needed with Quill
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (u) => {
@@ -73,15 +93,46 @@ export default function AskPage() {
     return () => unsubscribe();
   }, [router]);
 
+  // Handle escape key press for info modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showInfoModal) {
+        setShowInfoModal(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showInfoModal]);
+
+  // Set viewport height for mobile browsers
+  useEffect(() => {
+    // Fix for mobile browsers
+    const setVh = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    
+    setVh();
+    window.addEventListener('resize', setVh);
+    
+    return () => {
+      window.removeEventListener('resize', setVh);
+    };
+  }, []);
+
   const handlePost = async () => {
     if (!title.trim()) {
       toast(
         <div>
           <p className="font-semibold text-red-600">Missing Title</p>
           <p className="text-sm text-muted-foreground">
-            Please enter a title before posting your question.
+            Please provide a title for your question.
           </p>
-        </div>
+        </div>,
+        {
+          duration: 3000,
+        }
       );
       return;
     }
@@ -92,222 +143,182 @@ export default function AskPage() {
     }
 
     setIsPosting(true);
-    let imageURL = "";
 
     try {
-      if (imageFile) {
-        const imageRef = ref(
-          storage,
-          `post_images/${uuid()}-${imageFile.name}`
-        );
-        const snapshot = await uploadBytes(imageRef, imageFile);
-        imageURL = await getDownloadURL(snapshot.ref);
-      }
-
-      const userRef = doc(db, "users", user.uid);
-      const userSnap = await getDoc(userRef);
-      const userData = userSnap.exists() ? userSnap.data() : {};
-
-      await addDoc(collection(db, "posts"), {
+      // Get user info
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const userData = userDoc.data();
+      
+      // Prepare post data
+      const postData: any = {
         title,
-        description,
+        content: description,
         community: selectedCommunity,
-        userId: user.uid,
-        username: postAnonymously
-          ? "Anonymous"
-          : userData.username || "Anonymous",
-        avatar: postAnonymously ? "" : userData.avatarUrl || "",
-        imageURL,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
         upvotes: 0,
         commentsCount: 0,
-      });
+        anonymous: postAnonymously,
+      };
 
+      // Only include user data if not anonymous
+      if (!postAnonymously) {
+        postData.userId = user.uid;
+        postData.userName = userData?.displayName || user.displayName || 'User';
+        postData.userPhotoURL = userData?.photoURL || user.photoURL || '/defaultprofile.png';
+      } else {
+        postData.userId = user.uid; // Still store the real user ID for moderation purposes
+        postData.userName = 'Anonymous User';
+        postData.userPhotoURL = '/defaultprofile.png';
+      }
+
+      // Image upload functionality removed
+
+      // Add post to Firestore
+      const docRef = await addDoc(collection(db, 'posts'), postData);
+      
+      // Success notification
       toast(
         <div>
-          <p className="font-semibold">Posted!</p>
+          <p className="font-semibold">Post Created</p>
           <p className="text-sm text-muted-foreground">
-            Your question has been published successfully.
+            Your question has been posted successfully.
           </p>
-        </div>
+        </div>,
+        {
+          duration: 3000,
+        }
       );
 
-      setTimeout(() => {
-        router.push("/");
-      }, 1000);
-
-      // Reset form
-      setTitle("");
-      setDescription("");
-      setSelectedCommunity(communities[0]);
-      setImageFile(null);
-      setImagePreview(null);
+      // Redirect to home page or the post
+      router.push('/');
     } catch (error) {
-      console.error("Error posting:", error);
+      console.error('Error creating post:', error);
       toast(
         <div>
           <p className="font-semibold text-red-600">Error</p>
           <p className="text-sm text-muted-foreground">
-            Something went wrong while posting.
+            There was an error creating your post. Please try again.
           </p>
-        </div>
+        </div>,
+        {
+          duration: 3000,
+        }
       );
     } finally {
       setIsPosting(false);
     }
   };
 
-  // Show loading state or return null while checking authentication
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <Loader2 className="animate-spin h-8 w-8 text-[#11244DB2]" />
-      </div>
-    );
-  }
-
-  // Don't render anything if user is not authenticated (will redirect)
-  if (!user) {
-    return null;
-  }
+  // Formatting handlers no longer needed with Quill
 
   return (
-    <div className="flex w-full pl-8">
-      <div className="w-full max-w-2xl px-4">
-        <h1 className="text-2xl font-bold">Ask a question</h1>
+    <div className="min-h-screen bg-white">
+      <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <h1 className="text-3xl font-bold">Ask a question</h1>
 
-        {/* Community Dropdown */}
+        {/* Community selector */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="w-fit bg-neutral-100 flex items-center gap-x-2 py-2 pl-3 pr-4 rounded-full border border-black/10 hover:bg-neutral-200 transition text-sm font-semibold mt-5">
-              <div className="w-6 h-6 bg-neutral-200 rounded-full" />
-              {selectedCommunity}
-              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            <button className="flex items-center gap-x-2 mt-5 border border-gray-200 rounded-full pl-2 pr-4 py-1.5">
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                <Image 
+                  src={communityAvatars[selectedCommunity] || '/defaultprofile.png'}
+                  alt={selectedCommunity}
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <span className="font-medium">m/{selectedCommunity}</span>
+              <ChevronDown className="w-4 h-4" />
             </button>
           </DropdownMenuTrigger>
-
-          <DropdownMenuContent
-            align="start"
-            className="w-40 rounded-xl p-1 shadow-md"
-          >
-            {communities.map((c) => (
+          <DropdownMenuContent align="start" className="bg-white border border-gray-200 rounded-md shadow-md">
+            {communityOptions.map((c) => (
               <DropdownMenuItem
-                key={c}
-                onClick={() => setSelectedCommunity(c)}
-                className={`cursor-pointer px-3 py-2 rounded-md text-sm ${
-                  selectedCommunity === c ? "bg-neutral-200 font-semibold" : ""
-                }`}
+                key={c.value}
+                onClick={() => setSelectedCommunity(c.value)}
+                className="flex items-center gap-x-2 px-3 py-2 hover:bg-gray-100 cursor-pointer"
               >
-                {c}
+                <div className="w-7 h-7 rounded-full overflow-hidden bg-gray-200 flex-shrink-0">
+                  <Image 
+                    src={communityAvatars[c.value] || '/defaultprofile.png'}
+                    alt={c.value}
+                    width={28}
+                    height={28}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="font-medium">
+                  {c.label}
+                </div>
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* Title */}
-        <div className="max-w-2xl border border-black p-4 rounded-2xl mt-5">
-          <h1 className="text-sm font-medium">
-            Title<span className="text-red-600">*</span>
-          </h1>
-          <Input
-            className="border-none shadow-none focus-visible:ring-0 px-0"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </div>
-
-        {/* Description + Upload */}
-        <div className="max-w-2xl border border-black p-4 rounded-2xl flex gap-x-4 items-start mt-5">
-          <div className="w-full">
-            <h1 className="text-sm font-medium">Description</h1>
-            <Textarea
-              className="border-none shadow-none focus-visible:ring-0 px-0"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+        {/* Main content area */}
+        <div className="max-w-2xl mx-auto mt-8 space-y-6">
+          {/* Title input */}
+          <div className="border border-gray-200 p-4 rounded-lg">
+            <label className="block text-sm font-medium mb-2">
+              Title<span className="text-red-600">*</span>
+            </label>
+            <Input
+              placeholder="Enter a descriptive title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="border-none shadow-none focus-visible:ring-0 p-0"
             />
           </div>
-          <div className="flex-1/6 aspect-square rounded-xl border border-black relative overflow-hidden group">
-            {imagePreview ? (
-              <>
-                <>
-                  <div
-                    onDoubleClick={() => setShowImageModal(true)}
-                    className="relative w-full h-full group cursor-zoom-in z-10"
-                  >
-                    <Image
-                      src={imagePreview}
-                      alt="Preview"
-                      width={200}
-                      height={200}
-                      className="w-full h-full object-cover rounded-xl transition-transform duration-200 group-hover:scale-105"
-                    />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setImagePreview(null);
-                        setImageFile(null);
-                      }}
-                      className="absolute top-1 right-1 w-6 h-6 bg-black/70 text-white rounded-full flex items-center justify-center text-xs hover:bg-black transition z-20"
-                      title="Remove image"
-                    >
-                      ×
-                    </button>
-                  </div>
 
-                  {/* Modal to show full image */}
-                  <Dialog open={showImageModal} onOpenChange={setShowImageModal}>
-                    <DialogContent className="max-w-3xl p-0 overflow-hidden bg-white">
-                      <Image
-                        src={imagePreview}
-                        alt="Full Image"
-                        width={800}
-                        height={800}
-                        className="w-full h-auto object-contain"
-                      />
-                    </DialogContent>
-                  </Dialog>
-                </>
-              </>
-            ) : (
-              <>
-                <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                  <ImagePlus className="w-6 h-6 text-muted-foreground" />
-                </div>
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setImageFile(file);
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onloadend = () =>
-                        setImagePreview(reader.result as string);
-                      reader.readAsDataURL(file);
-                    } else {
-                      setImagePreview(null);
-                    }
-                  }}
-                  className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer z-20"
-                />
-              </>
-            )}
+          {/* Description with Quill editor */}
+          <div className="border border-gray-200 p-4 rounded-lg">
+            <div className="mb-2">
+              <label className="block text-sm font-medium">Description</label>
+            </div>
+            <QuillEditor
+              value={description}
+              onChange={setDescription}
+              placeholder="Provide more details about your question"
+              className="min-h-[200px]"
+            />
           </div>
+          
+          {/* Image upload removed */}
         </div>
 
         {/* Buttons */}
-        <div className="flex justify-between items-center max-w-2xl mt-5">
+        <div className="flex justify-between items-center max-w-2xl mx-auto mt-6">
           <div className="min-h-[24px] flex items-center">
-            <label className="flex items-center gap-x-2 text-sm">
-              <Checkbox
-                id="anonymous"
-                checked={postAnonymously}
-                onCheckedChange={(checked: boolean | 'indeterminate') =>
-                  setPostAnonymously(Boolean(checked))
-                }
-              />
-              Post Anonymously
-            </label>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <label className="flex items-center gap-x-2 text-sm cursor-pointer group">
+                    <Checkbox
+                      id="anonymous"
+                      checked={postAnonymously}
+                      onCheckedChange={(checked: boolean | 'indeterminate') =>
+                        setPostAnonymously(Boolean(checked))
+                      }
+                    />
+                    <span className="flex items-center">
+                      Post Anonymously
+                      {postAnonymously && (
+                        <span className="ml-2 text-xs bg-neutral-200 px-1.5 py-0.5 rounded text-neutral-700">
+                          as Anonymous User
+                        </span>
+                      )}
+                    </span>
+                  </label>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" align="start" className="max-w-xs p-3 text-sm">
+                  You&apos;ll appear as &quot;Anonymous User&quot; to others.
+                  Your real name and profile picture will be hidden.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           <div className="flex items-center gap-x-3">
@@ -322,24 +333,20 @@ export default function AskPage() {
               {isPosting ? "Posting..." : "Post"}
             </Button>
 
-            <Button size="lg" className="bg-[#7F0000] rounded-full !font-bold">
+            <Button size="lg" className="bg-[#7F0000] hover:bg-[#6a0000] text-white rounded-full !font-bold">
               Ask AI
             </Button>
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Info className="w-5 h-5 cursor-pointer text-gray-600" />
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs p-3 text-sm">
-                  Get a tailored response from MathCom AI — designed to guide you step-by-step through your math question.
-                  (Your question won&apos;t be posted publicly unless you choose to.)
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <button
+              onClick={() => setShowInfoModal(true)}
+              className="inline-flex items-center justify-center"
+            >
+              <Info className="w-5 h-5 cursor-pointer text-gray-600" />
+            </button>
           </div>
         </div>
 
+        {/* Login Alert Dialog */}
         <AlertDialog open={showLoginAlert} onOpenChange={setShowLoginAlert}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -355,6 +362,33 @@ export default function AskPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Image Modal removed */}
+
+        {/* Info Modal */}
+        {showInfoModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/30">
+            <div className="bg-white rounded-xl shadow-lg pt-6 pb-8 px-10 max-w-2xl w-full relative animate-fade-in">
+              <div className="flex justify-between items-center mb-8">
+                <div className="flex items-center">
+                  <Info className="w-6 h-6 text-[#11244D]/70 mr-3" />
+                  <span className="font-semibold text-[#11244D] text-xl">About MathCom AI</span>
+                </div>
+                <button 
+                  onClick={() => setShowInfoModal(false)} 
+                  className="text-[#11244D]/70 hover:text-[#11244D] text-2xl font-medium focus:outline-none"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="text-[#11244D]/80 text-lg space-y-4 px-2">
+                <p>MathCom AI is your personal math guide.</p>
+                <p>It acts like a tutor, helping you understand problems and explore solutions, not just giving quick answers.</p>
+                <p>Still in beta, so double-check responses for accuracy.</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

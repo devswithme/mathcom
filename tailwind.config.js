@@ -22,6 +22,16 @@ module.exports = {
           md: "calc(var(--radius) - 0.125rem)",
           sm: "calc(var(--radius) - 0.25rem)",
         },
+        animation: {
+          loadingBar: "loadingBar 2s infinite",
+        },
+        keyframes: {
+          loadingBar: {
+            '0%': { width: '0%', left: '0%' },
+            '50%': { width: '100%', left: '0%' },
+            '100%': { width: '0%', left: '100%' },
+          },
+        },
       },
     },
     plugins: [],

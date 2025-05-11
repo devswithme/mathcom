@@ -20,6 +20,7 @@ import { usePathname } from 'next/navigation';
 import { useNavbar } from '@/context/NavbarContext';
 import { Quicksand, Smooch_Sans } from 'next/font/google';
 import { useRouter } from "next/navigation";
+import Image from 'next/image';
 
 const quicksand = Quicksand({ subsets: ['latin'] });
 const smoochSans = Smooch_Sans({ subsets: ['latin'], weight: ['400', '500', '600', '700'] });
@@ -34,6 +35,13 @@ const Navbar = ({ className }: { className?: string }) => {
 	
 	const [communityOpen, setCommunityOpen] = useState(true);
 	const [resourcesOpen, setResourcesOpen] = useState(true);
+
+	// Add a mapping for community avatars
+	const communityAvatars: Record<string, string> = {
+		cie_checkpoint: '/community_avatars/cie_checkpoint.png',
+		cie_igcse: '/community_avatars/cie_igcse.png',
+		cie_alevel: '/community_avatars/cie_alevel.png',
+	};
 
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -115,7 +123,13 @@ const Navbar = ({ className }: { className?: string }) => {
 									? 'bg-gray-100 text-gray-900 font-medium' 
 									: 'text-gray-700'
 							}`}>
-							<div className='w-5 h-5 rounded-full bg-gray-400 flex-shrink-0' />
+							<Image
+								src={communityAvatars.cie_checkpoint}
+								alt='cie_checkpoint avatar'
+								width={20}
+								height={20}
+								className='w-5 h-5 rounded-full object-cover flex-shrink-0'
+							/>
 							<span>m/cie_checkpoint</span>
 						</Link>
 						<Link
@@ -125,28 +139,30 @@ const Navbar = ({ className }: { className?: string }) => {
 									? 'bg-gray-100 text-gray-900 font-medium' 
 									: 'text-gray-700'
 							}`}>
-							<div className='w-5 h-5 rounded-full bg-gray-400 flex-shrink-0' />
+							<Image
+								src={communityAvatars.cie_igcse}
+								alt='cie_igcse avatar'
+								width={20}
+								height={20}
+								className='w-5 h-5 rounded-full object-cover flex-shrink-0'
+							/>
 							<span>m/cie_igcse</span>
 						</Link>
 						<Link
-							href='/community/cie_aslevel'
+							href='/community/cie_alevel'
 							className={`flex items-center gap-3 px-4 py-2 text-base hover:bg-gray-100 rounded-md ${
-								isActive('/community/cie_aslevel') 
+								isActive('/community/cie_alevel') 
 									? 'bg-gray-100 text-gray-900 font-medium' 
 									: 'text-gray-700'
 							}`}>
-							<div className='w-5 h-5 rounded-full bg-gray-400 flex-shrink-0' />
-							<span>m/cie_aslevel</span>
-						</Link>
-						<Link
-							href='/community/cie_a2level'
-							className={`flex items-center gap-3 px-4 py-2 text-base hover:bg-gray-100 rounded-md ${
-								isActive('/community/cie_a2level') 
-									? 'bg-gray-100 text-gray-900 font-medium' 
-									: 'text-gray-700'
-							}`}>
-							<div className='w-5 h-5 rounded-full bg-gray-400 flex-shrink-0' />
-							<span>m/cie_a2level</span>
+							<Image
+								src={communityAvatars.cie_alevel}
+								alt='cie_alevel avatar'
+								width={20}
+								height={20}
+								className='w-5 h-5 rounded-full object-cover flex-shrink-0'
+							/>
+							<span>m/cie_alevel</span>
 						</Link>
 					</div>
 				)}
@@ -192,8 +208,8 @@ const Navbar = ({ className }: { className?: string }) => {
 					</div>
 				)}
 			</div>
-		</aside>
-	);
+    </aside>
+  );
 };
 
 export default Navbar;

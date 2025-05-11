@@ -6,10 +6,20 @@ import Header from '@/components/header';
 import { useNavbar } from '@/context/NavbarContext';
 import { X } from 'lucide-react';
 import { Button } from './ui/button';
+import { usePathname } from 'next/navigation';
 
 // Client component to handle navbar state
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const { isNavbarOpen, toggleNavbar, closeNavbar } = useNavbar();
+  const pathname = usePathname();
+  
+  // Check if we're on the onboarding page
+  const isOnboarding = pathname.includes('/onboarding');
+  
+  // If we're on onboarding, just render the children without navbar/header
+  if (isOnboarding) {
+    return <>{children}</>;
+  }
   
   return (
     <>
@@ -40,8 +50,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
           />
         )}
         
-        {/* Main content - always adjusted for desktop */}
-        <main className="w-full transition-all duration-300 ease-in-out px-4 pt-[86px] pb-4 md:ml-64">
+        {/* Main content - with standardized padding */}
+        <main className="w-full transition-all duration-300 ease-in-out pt-[40px] pb-4 md:ml-64">
           {children}
         </main>
       </div>

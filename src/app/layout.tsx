@@ -21,14 +21,14 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  return (
-    <html lang='en'>
-      <body className={`${quickSand.className} antialiased`}>
-        <NavbarProvider>
-          <ClientLayout>{children}</ClientLayout>
+	return (
+		<html lang='en'>
+			<body className={`${quickSand.className} antialiased`}>
+				<NavbarProvider>
+					<ClientLayout>{children}</ClientLayout>
           <Toaster position="bottom-center" richColors />
-        </NavbarProvider>
-      </body>
-    </html>
-  )
+				</NavbarProvider>
+			</body>
+		</html>
+	)
 }
