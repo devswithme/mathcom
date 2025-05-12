@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 from deepseek import get_model_name_for_question, stream_ai_response, mathcom_system_prompt
+from similar import stream_similar_question
 
 app = Flask(__name__)
 CORS(app, resources={r"/ask": {"origins": ["http://localhost:3000", "http://localhost:3007", "http://localhost:3008"]}})
@@ -26,6 +27,20 @@ def ask():
             mimetype='text/plain'
         )
 
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/ask-similar', methods=['POST'])
+def ask_similar():
+    try:
+        data = request.get_json()
+        messages = data.get('messages', [])
+        if not messages:
+            return jsonify({"error": "No messages provided"}), 400
+        return Response(
+            stream_with_context(stream_similar_question(messages)),
+            mimetype='text/plain'
+        )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
