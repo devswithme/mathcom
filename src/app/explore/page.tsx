@@ -55,7 +55,7 @@ const CommunityCard = ({ name, slug, members, description, loading, isUserMember
           </div>
           {!isUserMember && (
             <Button 
-              className="bg-[#11244DB3] hover:bg-[#11244D] text-white font-medium rounded-full px-4 mt-2 md:mt-0"
+              className="bg-[#11244DB3] hover:bg-[#11244D]/90 text-white font-medium rounded-full px-4 mt-2 md:mt-0"
               onClick={handleJoin}
             >
               Join
@@ -239,7 +239,7 @@ export default function ExplorePage() {
                 <Button
                   type="submit"
                   disabled={!curriculumRequest.trim()}
-                  className="bg-[#11244DB3] hover:bg-[#11244D] text-white rounded-full px-6"
+                  className="bg-[#11244DB3] hover:bg-[#11244D]/90 text-white rounded-full px-6"
                 >
                   Submit Request
                 </Button>

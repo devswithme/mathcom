@@ -97,16 +97,7 @@ const Navbar = ({ className }: { className?: string }) => {
 					<Star size={20} strokeWidth={1.5} />
 					<span>Explore</span>
 				</Link>
-				<Link
-					href='/messages'
-					className={`flex items-center gap-3 px-4 py-2.5 text-base hover:bg-gray-100 rounded-md ${
-						isActive('/messages') 
-							? 'bg-gray-100 text-gray-900 font-medium' 
-							: 'text-gray-700'
-					}`}>
-					<MessageCircle size={20} strokeWidth={1.5} />
-					<span>Messages</span>
-				</Link>
+				{/* Messages feature temporarily hidden */}
 			</div>
 
 			<div className="border-t border-gray-200 pt-4 pb-2">

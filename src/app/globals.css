@@ -278,3 +278,34 @@ hr.dropdown-separator {
   margin: 0 !important;
   padding: 0 !important;
 }
+
+/* Hide scrollbar utility */
+.scrollbar-none {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE 10+ */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+}
+
+.end-chat-dialog-no-x [data-radix-dialog-close],
+.end-chat-dialog-no-x button[aria-label="Close"] {
+  display: none !important;
+}
+
+:global(.ask-tutor-dialog-no-x [data-radix-dialog-close]),
+:global(.ask-tutor-dialog-no-x button[aria-label="Close"]) {
+  display: none !important;
+}
+
+.ask-tutor-dialog-no-x > button {
+  display: none !important;
+}
+
+.ask-tutor-dialog-no-x {
+  padding-top: 2.5rem !important;
+}
+
+.end-chat-dialog-no-x > button {
+  display: none !important;
+}

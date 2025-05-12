@@ -274,8 +274,8 @@ export default function AskPage() {
           </div>
 
           {/* Description with Quill editor */}
-          <div className="border border-gray-200 p-4 rounded-lg">
-            <div className="mb-2">
+          <div className="border border-gray-200 rounded-lg mb-6">
+            <div className="p-4 pb-0">
               <label className="block text-sm font-medium">Description</label>
             </div>
             <QuillEditor
@@ -333,7 +333,14 @@ export default function AskPage() {
               {isPosting ? "Posting..." : "Post"}
             </Button>
 
-            <Button size="lg" className="bg-[#7F0000] hover:bg-[#6a0000] text-white rounded-full !font-bold">
+            <Button size="lg" className="bg-[#7F0000] hover:bg-[#6a0000] text-white rounded-full !font-bold"
+              onClick={() => {
+                sessionStorage.setItem('ai_question_title', title);
+                sessionStorage.setItem('ai_question_description', description);
+                // (Add image support here if needed)
+                router.push('/chat');
+              }}
+            >
               Ask AI
             </Button>
 

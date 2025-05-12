@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import Image from 'next/image'
 import { ArrowUp, MessageCircle, Share2, Plus, MoreVertical, Trash, Flag } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -388,7 +389,16 @@ export default function CIEIGCSECommunity() {
   return (
     <div className="flex w-full px-8 flex-col">
       {/* Banner Area - full width */}
-      <div className="w-full aspect-[5/1] bg-gray-400 rounded-lg mb-6 mt-8 relative">
+      <div className="w-full rounded-lg mb-6 mt-8 relative overflow-hidden">
+        {/* Banner Image */}
+        <Image 
+          src="/community_banners/cie_igcse_banner.png" 
+          alt="CIE IGCSE Community Banner"
+          width={1000}
+          height={200}
+          priority
+          className="w-full h-auto"
+        />
         {/* Hover effect overlay */}
         <div className="absolute inset-x-0 top-2 bottom-2 bg-neutral-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none" />
         
@@ -422,7 +432,7 @@ export default function CIEIGCSECommunity() {
           {/* Join button only if not joined */}
           {!hasJoined && (
             <Button 
-              className="rounded-full font-medium bg-[#11244DB3] hover:bg-[#11244D] text-white px-7 mb-1"
+              className="rounded-full font-medium bg-[#11244DB3] hover:bg-[#11244D]/90 text-white px-7 mb-1"
               onClick={handleJoin}
               disabled={hasJoined || isJoining}
             >
@@ -447,7 +457,7 @@ export default function CIEIGCSECommunity() {
               No questions have been posted in this community yet. 
             </p>
             <Link href='/ask?community=cie_igcse&from=community/cie_igcse' className='mt-4'>
-              <Button className="bg-[#11244DB3] hover:bg-[#11244D] rounded-full px-6">
+              <Button className="bg-[#11244DB3] hover:bg-[#11244D]/90 rounded-full px-6">
                 Ask a Question
               </Button>
             </Link>
@@ -598,7 +608,7 @@ export default function CIEIGCSECommunity() {
           <div className="flex justify-center mt-4">
             <Button 
               variant="default" 
-              className="bg-[#11244DB3] hover:bg-[#11244D] rounded-full px-8" 
+              className="bg-[#11244DB3] hover:bg-[#11244D]/90 rounded-full px-8" 
               onClick={() => setShareDialogOpen(false)}
             >
               OK

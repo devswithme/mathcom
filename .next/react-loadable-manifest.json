@@ -5,10 +5,10 @@
       "static/chunks/_app-pages-browser_node_modules_mathlive_mathlive_mjs.js"
     ]
   },
-  "components/QuillEditor.tsx -> quill": {
-    "id": "components/QuillEditor.tsx -> quill",
+  "components/QuillEditor.tsx -> mathlive": {
+    "id": "components/QuillEditor.tsx -> mathlive",
     "files": [
-      "static/chunks/_app-pages-browser_node_modules_quill_quill_js.js"
+      "static/chunks/_app-pages-browser_node_modules_mathlive_mathlive_mjs.js"
     ]
   }
 }

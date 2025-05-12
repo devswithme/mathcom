@@ -1,110 +1,26 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import 'quill/dist/quill.snow.css';
-import 'katex/dist/katex.min.css';
-// Import KaTeX directly to ensure it's available
-import katex from 'katex';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import MathLiveField from './MathLiveField';
+import { Bold, Italic, Underline, List, ListOrdered } from 'lucide-react';
+import 'katex/dist/katex.min.css';
 
-// Add KaTeX to window type
+// Define the MathfieldElement type if not already defined
 declare global {
-  interface Window {
-    katex: any;
+  namespace JSX {
+    interface IntrinsicElements {
+      'math-field': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
+    }
   }
 }
 
-// Make KaTeX globally available for Quill
-if (typeof window !== 'undefined') {
-  window.katex = katex;
+// Define MathfieldElement interface
+interface MathfieldElement extends HTMLElement {
+  value: string;
+  setValue(value: string): void;
+  executeCommand(command: string): void;
 }
-
-// Custom styles to fix Quill UI issues
-const quillStyles = `
-  /* Remove borders from container */
-  .ql-container {
-    border: none !important;
-    font-family: inherit;
-  }
-  
-  /* Adjust editor padding */
-  .ql-editor {
-    padding: 12px 15px;
-    min-height: 200px;
-  }
-  
-  /* Clean up toolbar appearance */
-  .ql-toolbar.ql-snow {
-    border: none !important;
-    padding: 8px 0;
-    display: flex;
-    align-items: center;
-  }
-  
-  /* Remove the extra line/border */
-  .quill-editor-container .ql-snow.ql-toolbar + .ql-snow.ql-container {
-    border: none;
-  }
-  
-  /* Better spacing and alignment for toolbar buttons */
-  .ql-toolbar.ql-snow .ql-formats {
-    display: inline-flex !important;
-    align-items: center;
-    margin-right: 20px;
-    vertical-align: middle;
-  }
-  
-  /* Make all buttons the same size and properly centered */
-  .ql-toolbar.ql-snow button {
-    width: 40px;
-    height: 40px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    float: none;
-    margin: 0 5px;
-  }
-  
-  /* Fix button SVG alignment */
-  .ql-toolbar.ql-snow button svg {
-    float: none;
-    margin: 0 auto;
-    width: 24px;
-    height: 24px;
-  }
-  
-  /* Formula icon styling */
-  .ql-formula-icon {
-    font-family: serif;
-    font-weight: bold;
-    display: inline-block;
-    vertical-align: middle;
-    line-height: 1;
-    font-size: 24px;
-  }
-  
-  /* Fix superscript and subscript alignment */
-  .ql-toolbar.ql-snow .ql-script {
-    vertical-align: middle;
-  }
-  
-  /* Fix list button alignment */
-  .ql-toolbar.ql-snow .ql-list {
-    vertical-align: middle;
-  }
-  
-  /* Make sure all icons are centered in their buttons */
-  .ql-toolbar.ql-snow .ql-picker {
-    display: inline-flex;
-    align-items: center;
-    height: 28px;
-  }
-`;
 
 interface QuillEditorProps {
   value: string;
@@ -120,350 +36,321 @@ const QuillEditor: React.FC<QuillEditorProps> = ({
   className = '',
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
-  const quillRef = useRef<any>(null);
   const [isClient, setIsClient] = useState(false);
   const [mathDialogOpen, setMathDialogOpen] = useState(false);
   const [mathExpression, setMathExpression] = useState('');
+  const [editorContent, setEditorContent] = useState(value);
 
-  // Initialize Quill on client-side only
+  
+  // Register the MathLive web component on client-side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsClient(true);
+      
+      // Import mathlive dynamically to avoid SSR issues
+      import('mathlive').then(({ MathfieldElement }) => {
+        // Only register if not already registered
+        if (!customElements.get('math-field')) {
+          customElements.define('math-field', MathfieldElement);
+        }
+      }).catch(error => {
+        console.error('Error loading MathLive:', error);
+      });
+    }
+  }, []);
+  
+  // Set up client-side rendering
   useEffect(() => {
     setIsClient(true);
     
-    if (typeof window !== 'undefined' && editorRef.current && !quillRef.current) {
-      // First make KaTeX available globally
-      window.katex = katex;
-      
-      // Import Quill
-      import('quill').then((QuillModule) => {
-        const Quill = QuillModule.default;
-        
-        try {
-          // Simple approach: just register a custom handler for formulas
-          Quill.register('modules/formula', function() { return {}; }, true);
-          
-          // Use a simple object for the formula format
-          const formulaFormat = {
-            blotName: 'formula',
-            tagName: 'span',
-            className: 'ql-formula',
-            
-            create: function(value: string) {
-              const node = document.createElement(this.tagName);
-              node.classList.add(this.className);
-              node.setAttribute('data-value', value);
-              
-              try {
-                window.katex.render(value, node, { throwOnError: false });
-              } catch (e) {
-                console.error('KaTeX error:', e);
-                node.textContent = value;
-              }
-              
-              return node;
-            },
-            
-            value: function(node: HTMLElement) {
-              return node.getAttribute('data-value');
-            }
-          };
-          
-          // Register the formula format
-          Quill.register('formats/formula', formulaFormat, true);
-        } catch (error) {
-          console.error('Error registering formula module:', error);
-        }
-        
-        // Define custom icons
-        const icons = Quill.import('ui/icons') as Record<string, string>;
-        
-        // Image icon
-        icons['image'] = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ql-image-icon"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
-        
-        // Sigma icon for math editor
-        icons['matheditor'] = '<span style="font-size: 18px; line-height: 1; display: inline-block; font-family: serif;">Σ</span>';
-        
-        // Define custom toolbar options
-        const toolbarOptions = [
-          ['bold', 'italic', 'underline'],
-          ['matheditor', 'image'],
-          [{ 'list': 'bullet' }, { 'list': 'ordered' }],
-        ];
-
-        // Initialize Quill editor
-        if (editorRef.current) {
-          // Create the Quill editor
-          quillRef.current = new Quill(editorRef.current, {
-            modules: {
-              toolbar: {
-                container: toolbarOptions,
-                handlers: {
-                  // Image upload handler
-                  image: function() {
-                    // Create a file input element
-                    const input = document.createElement('input');
-                    input.setAttribute('type', 'file');
-                    input.setAttribute('accept', 'image/*');
-                    input.click();
-                    
-                    // When a file is selected
-                    input.onchange = () => {
-                      if (input.files && input.files[0]) {
-                        const file = input.files[0];
-                        
-                        // Simple client-side preview (you would typically upload to server here)
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                          const imageUrl = e.target?.result as string;
-                          // Insert the image into the editor
-                          const quill = quillRef.current;
-                          const range = quill.getSelection(true);
-                          quill.insertEmbed(range.index, 'image', imageUrl);
-                          quill.setSelection(range.index + 1);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    };
-                  },
-                  
-                  // Math editor handler (Sigma button)
-                  matheditor: function() {
-                    // Open the math editor dialog
-                    setMathDialogOpen(true);
-                    
-                    // Get current selection to insert math at this position later
-                    const quill = quillRef.current;
-                    const range = quill.getSelection(true);
-                    
-                    // Store the range in a ref to use it when inserting the math expression
-                    quillRef.current.lastSelection = range;
-                  },
-                  
-                  // Math formula handlers
-                  fraction: function() {
-                    const quill = quillRef.current;
-                    const range = quill.getSelection(true);
-                    quill.insertText(range.index, '\\frac{numerator}{denominator}');
-                    quill.setSelection(range.index + 7, 9); // Select 'numerator' for easy replacement
-                  },
-                  
-                  root: function() {
-                    const quill = quillRef.current;
-                    const range = quill.getSelection(true);
-                    quill.insertText(range.index, '\\sqrt{x}');
-                    quill.setSelection(range.index + 6, 1); // Select 'x' for easy replacement
-                  },
-                  
-                  integral: function() {
-                    const quill = quillRef.current;
-                    const range = quill.getSelection(true);
-                    quill.insertText(range.index, '\\int_{a}^{b} f(x) dx');
-                    quill.setSelection(range.index + 6, 1); // Select 'a' for easy replacement
-                  },
-                  
-                  sum: function() {
-                    const quill = quillRef.current;
-                    const range = quill.getSelection(true);
-                    quill.insertText(range.index, '\\sum_{i=1}^{n} x_i');
-                    quill.setSelection(range.index + 6, 3); // Select 'i=1' for easy replacement
-                  },
-                  
-                  derivative: function() {
-                    const quill = quillRef.current;
-                    const range = quill.getSelection(true);
-                    quill.insertText(range.index, '\\frac{d}{dx}f(x)');
-                    quill.setSelection(range.index + 10, 3); // Select 'f(x)' for easy replacement
-                  }
-                }
-              },
-              formula: true, // Enable formula module (KaTeX)
-            },
-            placeholder: placeholder,
-            theme: 'snow',
-          });
-
-          // Set initial content
-          if (value) {
-            quillRef.current.root.innerHTML = value;
-          }
-
-          // Handle content change
-          quillRef.current.on('text-change', () => {
-            const html = quillRef.current.root.innerHTML;
-            onChange(html);
-          });
-        }
-      });
+    // Load KaTeX if needed
+    if (typeof window !== 'undefined' && !(window as any).katex) {
+      const katexScript = document.createElement('script');
+      katexScript.src = 'https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js';
+      katexScript.integrity = 'sha384-cpW21h6RZv/phavutF+AuVYrr+dA8xD9zs6FwLpaCct6O9ctzYFfFr4dgmgccOTx';
+      katexScript.crossOrigin = 'anonymous';
+      document.head.appendChild(katexScript);
     }
-
-    // Cleanup function
-    return () => {
-      if (quillRef.current) {
-        quillRef.current.off('text-change');
-      }
-    };
   }, []);
-
-  // Update Quill content when value prop changes
+  
+  // Initialize editor content
   useEffect(() => {
-    if (quillRef.current && value !== quillRef.current.root.innerHTML) {
-      quillRef.current.root.innerHTML = value;
+    if (editorRef.current && isClient) {
+      if (value) {
+        editorRef.current.innerHTML = value;
+      } else {
+        editorRef.current.innerHTML = '';
+      }
+      renderMathInEditor();
     }
-  }, [value]);
-
-  // Handle inserting math expression from the dialog
-  const handleInsertMath = () => {
-    if (quillRef.current && mathExpression) {
+  }, [isClient, value]);
+  
+  // Update content when value prop changes from outside
+  useEffect(() => {
+    if (editorRef.current && isClient && document.activeElement !== editorRef.current) {
+      editorRef.current.innerHTML = value || '';
+      renderMathInEditor();
+    }
+  }, [isClient, value]);
+  
+  // Render math expressions in the editor
+  const renderMathInEditor = useCallback(() => {
+    if (editorRef.current && typeof window !== 'undefined' && (window as any).katex) {
       try {
-        // Get the stored selection
-        const range = quillRef.current.lastSelection || quillRef.current.getSelection(true);
-        
-        if (range) {
-          // First, ensure the math expression is properly formatted
-          let cleanExpression = mathExpression.trim();
-          
-          // Render the math expression using KaTeX
-          const renderedMath = katex.renderToString(cleanExpression, {
-            displayMode: false,
-            throwOnError: false,
-            output: 'html'
-          });
-          
-          // Create a unique ID for this formula
-          const formulaId = 'formula-' + Date.now();
-          
-          // Insert the rendered HTML with proper styling
-          quillRef.current.clipboard.dangerouslyPasteHTML(
-            range.index,
-            `<span 
-              class="ql-formula" 
-              id="${formulaId}" 
-              data-value="${cleanExpression.replace(/"/g, '&quot;')}" 
-              contenteditable="false"
-            >${renderedMath}</span>`,
-            'api'
-          );
-          
-          // Add a space after the formula for better editing
-          quillRef.current.insertText(range.index + 1, ' ', 'api');
-          
-          // Move cursor after the inserted formula
-          quillRef.current.setSelection(range.index + 2);
-          
-          // Force a re-render of KaTeX elements
-          setTimeout(() => {
-            const formulaElement = document.getElementById(formulaId);
-            if (formulaElement) {
-              const value = formulaElement.getAttribute('data-value');
-              if (value) {
-                try {
-                  const html = katex.renderToString(value, {
-                    displayMode: false,
-                    throwOnError: false
-                  });
-                  formulaElement.innerHTML = html;
-                } catch (e) {
-                  console.error('Error re-rendering formula:', e);
-                }
-              }
+        // Find all math expressions ($$...$$) and render them
+        const mathElements = editorRef.current.querySelectorAll('.math-expression');
+        mathElements.forEach(element => {
+          const latex = element.getAttribute('data-latex');
+          if (latex) {
+            try {
+              (window as any).katex.render(latex, element, {
+                throwOnError: false
+              });
+            } catch (err) {
+              console.error('KaTeX render error:', err);
             }
-          }, 10);
-          
-          console.log('Successfully inserted math expression');
-        } else {
-          console.warn('No selection range found');
-          // Insert at the end if no selection
-          const length = quillRef.current.getLength();
-          const cleanExpression = mathExpression.trim();
-          const renderedMath = katex.renderToString(cleanExpression, {
-            displayMode: false,
+          }
+        });
+      } catch (error) {
+        console.error('Error rendering math expressions:', error);
+      }
+    }
+  }, []);
+  
+  // Handle editor content changes
+  const handleContentChange = useCallback(() => {
+    if (editorRef.current) {
+      const html = editorRef.current.innerHTML;
+      setEditorContent(html);
+      onChange(html);
+    }
+  }, [onChange]);
+  
+  // Insert math expression
+  const insertMathExpression = useCallback(() => {
+    if (!mathExpression.trim() || !editorRef.current) return;
+    
+    try {
+      // Create a non-editable span for the math expression
+      const span = document.createElement('span');
+      span.className = 'math-expression';
+      span.contentEditable = 'false';
+      span.setAttribute('data-latex', mathExpression);
+      
+      // Render the math using KaTeX if available
+      if (typeof window !== 'undefined' && (window as any).katex) {
+        try {
+          (window as any).katex.render(mathExpression, span, {
             throwOnError: false
           });
-          
-          const formulaId = 'formula-' + Date.now();
-          
-          quillRef.current.clipboard.dangerouslyPasteHTML(
-            length - 1,
-            `<span 
-              class="ql-formula" 
-              id="${formulaId}" 
-              data-value="${cleanExpression.replace(/"/g, '&quot;')}" 
-              contenteditable="false"
-            >${renderedMath}</span>`,
-            'api'
-          );
-          quillRef.current.insertText(length, ' ', 'api');
-          quillRef.current.setSelection(length + 1);
+        } catch (err) {
+          // Fallback if KaTeX rendering fails
+          span.textContent = `$$${mathExpression}$$`;
         }
-      } catch (error) {
-        console.error('Error inserting math expression:', error);
-        // Fallback: insert as text with delimiters to indicate it's math
-        const range = quillRef.current.getSelection(true);
-        if (range) {
-          quillRef.current.insertText(range.index, ' $' + mathExpression + '$ ', 'user');
-          quillRef.current.setSelection(range.index + mathExpression.length + 4);
-        }
+      } else {
+        // Fallback if KaTeX is not loaded
+        span.textContent = `$$${mathExpression}$$`;
       }
       
-      // Close the dialog
-      setMathDialogOpen(false);
-      // Reset the math expression
-      setMathExpression('');
-    }
-  };
-
-  return (
-    <div className={`quill-editor-container ${className}`}>
-      {/* Add custom styles */}
-      <style dangerouslySetInnerHTML={{ __html: quillStyles }} />
-      {!isClient ? (
-        <div className="quill-placeholder">{placeholder}</div>
-      ) : null}
-      <div ref={editorRef} />
+      // Insert at cursor position
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        if (editorRef.current.contains(range.commonAncestorContainer)) {
+          range.deleteContents();
+          range.insertNode(span);
+          
+          // Add a space after the math expression
+          const textNode = document.createTextNode(' ');
+          range.setStartAfter(span);
+          range.insertNode(textNode);
+          
+          // Move cursor after the inserted space
+          range.setStartAfter(textNode);
+          range.setEndAfter(textNode);
+          selection.removeAllRanges();
+          selection.addRange(range);
+          
+          editorRef.current.focus();
+        } else {
+          editorRef.current.appendChild(span);
+          editorRef.current.appendChild(document.createTextNode(' '));
+        }
+      } else {
+        editorRef.current.appendChild(span);
+        editorRef.current.appendChild(document.createTextNode(' '));
+      }
       
-      {/* Math Editor Dialog */}
+      // Update the content
+      handleContentChange();
+    } catch (error) {
+      console.error('Error inserting math expression:', error);
+    }
+    
+    // Close the dialog and reset
+    setMathDialogOpen(false);
+    setMathExpression('');
+  }, [mathExpression, handleContentChange]);
+  
+  // Open math dialog
+  const openMathDialog = useCallback(() => {
+    setMathDialogOpen(true);
+  }, []);
+  
+  // Formatting functions
+  const execCommand = useCallback((command: string, value: string = '') => {
+    if (editorRef.current) {
+      // Focus the editor first
+      editorRef.current.focus();
+      
+      // Execute the command
+      document.execCommand(command, false, value);
+      
+      // Update content
+      handleContentChange();
+    }
+  }, [handleContentChange]);
+  
+  const handleBoldClick = useCallback(() => execCommand('bold'), [execCommand]);
+  const handleItalicClick = useCallback(() => execCommand('italic'), [execCommand]);
+  const handleUnderlineClick = useCallback(() => execCommand('underline'), [execCommand]);
+  const handleBulletListClick = useCallback(() => execCommand('insertUnorderedList'), [execCommand]);
+  const handleNumberedListClick = useCallback(() => execCommand('insertOrderedList'), [execCommand]);
+  
+
+
+  // Math dialog component
+  const MathDialog = () => {
+    return (
       <Dialog open={mathDialogOpen} onOpenChange={setMathDialogOpen}>
-        <DialogContent 
-          className="sm:max-w-[600px]"
-          onPointerDownOutside={(e) => {
-            // Prevent closing the dialog when clicking on the virtual keyboard
-            // Check if the click target is part of the ML__keyboard class
-            const target = e.target as HTMLElement;
-            if (target.closest('.ML__keyboard')) {
-              e.preventDefault();
-            }
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>Math Expression Editor</DialogTitle>
-          </DialogHeader>
-          
-          <div className="py-4">
-            {/* MathLive visual editor */}
-            <MathLiveField
-              value={mathExpression}
-              onChange={setMathExpression}
-              placeholder="Type or use the virtual keyboard"
-              className="min-h-[150px]"
-            />
-          </div>
-          
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setMathDialogOpen(false)}
-              onMouseDown={(e) => e.stopPropagation()}
+        <DialogContent className="sm:max-w-md">
+          <DialogTitle>Insert Math Expression</DialogTitle>
+          <DialogDescription>
+            Enter your mathematical expression using LaTeX syntax
+          </DialogDescription>
+          <MathLiveField
+            value={mathExpression}
+            onChange={setMathExpression}
+            placeholder="e.g. x^2 + 3x + 2"
+            className="mb-4"
+          />
+          <div className="flex justify-end gap-2 mt-4">
+            <button
+              className="px-4 py-2 border rounded-md"
+              onClick={() => {
+                setMathDialogOpen(false);
+                setMathExpression('');
+              }}
             >
               Cancel
-            </Button>
-            <Button 
-              onClick={handleInsertMath}
-              onMouseDown={(e) => e.stopPropagation()}
+            </button>
+            <button
+              className="px-4 py-2 bg-blue-600 text-white rounded-md"
+              onClick={insertMathExpression}
             >
               Insert
-            </Button>
-          </DialogFooter>
+            </button>
+          </div>
         </DialogContent>
       </Dialog>
+    );
+  };
+
+  if (!isClient) {
+    return <div className="border rounded-md p-3 min-h-[200px]">{placeholder}</div>;
+  }
+
+  return (
+    <div className={`wysiwyg-editor ${className}`}>
+      <div className="border-b border-gray-200 pb-2 mb-2 flex items-center space-x-2">
+        <button 
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
+          onClick={handleBoldClick}
+          title="Bold"
+        >
+          <Bold className="h-5 w-5" />
+        </button>
+        <button 
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
+          onClick={handleItalicClick}
+          title="Italic"
+        >
+          <Italic className="h-5 w-5" />
+        </button>
+        <button 
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
+          onClick={handleUnderlineClick}
+          title="Underline"
+        >
+          <Underline className="h-5 w-5" />
+        </button>
+        <button 
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
+          onClick={handleBulletListClick}
+          title="Bulleted List"
+        >
+          <List className="h-5 w-5" />
+        </button>
+        <button 
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
+          onClick={handleNumberedListClick}
+          title="Numbered List"
+        >
+          <ListOrdered className="h-5 w-5" />
+        </button>
+        <button 
+          className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 text-lg font-serif"
+          onClick={openMathDialog}
+          title="Insert Math Expression"
+        >
+          Σ
+        </button>
+      </div>
+      
+      {/* Single Unified Editor View */}
+      <div 
+        ref={editorRef}
+        className="w-full min-h-[200px] p-3 border rounded-md overflow-auto focus:outline-none focus:ring-1 focus:ring-blue-500 prose prose-sm max-w-none editor-container"
+        contentEditable={true}
+        onInput={handleContentChange}
+        onBlur={handleContentChange}
+        suppressContentEditableWarning={true}
+        data-placeholder={placeholder}
+        dir="ltr"
+        style={{
+          position: 'relative',
+          direction: 'ltr',
+          textAlign: 'left',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          unicodeBidi: 'isolate',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+        }}
+      />
+      
+      {/* Add CSS for placeholder and math expressions */}
+      <style jsx global>{`
+        .editor-container:empty:before {
+          content: attr(data-placeholder);
+          color: #9ca3af;
+          position: absolute;
+          pointer-events: none;
+        }
+        
+        .editor-container .math-expression {
+          display: inline-block;
+          margin: 0 2px;
+          padding: 2px 4px;
+          background-color: #f0f4f8;
+          border-radius: 4px;
+          border: 1px solid #e2e8f0;
+          cursor: pointer;
+        }
+      `}</style>
+      
+
+      
+      <MathDialog />
     </div>
   );
 };

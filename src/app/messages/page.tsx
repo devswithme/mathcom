@@ -239,7 +239,7 @@ export default function MessagesPage() {
                     />
                     <Button
                       onClick={handleSendMessage}
-                      className="rounded-full bg-[#11244DB3] hover:bg-[#11244D] text-white"
+                      className="rounded-full bg-[#11244DB3] hover:bg-[#11244D]/90 text-white"
                     >
                       Send
                     </Button>
@@ -260,7 +260,7 @@ export default function MessagesPage() {
               <p className="mb-3">Select a conversation to start messaging</p>
               <Button
                 onClick={() => activeConversation && setActiveConversation(activeConversation)}
-                className="rounded-full bg-[#11244DB3] hover:bg-[#11244D] text-white"
+                className="rounded-full bg-[#11244DB3] hover:bg-[#11244D]/90 text-white"
               >
                 View Messages
               </Button>

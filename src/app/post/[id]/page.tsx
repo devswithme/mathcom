@@ -770,7 +770,7 @@ const Page = () => {
 											</Button>
 											<Button
 												size='sm'
-												className='rounded-full bg-[#11244DB3] hover:bg-[#11244D] text-white px-6'
+												className='rounded-full bg-[#11244DB3] hover:bg-[#11244D]/90 text-white px-6'
 												onClick={submitComment}
 												disabled={!newComment.trim() || submitting}>
 												{submitting ? 'Posting...' : 'Comment'}
@@ -877,7 +877,7 @@ const Page = () => {
 																	</Button>
 																	<Button
 																		size="sm"
-																		className="rounded-full bg-[#11244DB3] hover:bg-[#11244D]"
+																		className="rounded-full bg-[#11244DB3] hover:bg-[#11244D]/90 text-white px-6"
 																		onClick={submitComment}
 																		disabled={!replyText.trim() || replySubmitting}
 																	>
@@ -969,7 +969,7 @@ const Page = () => {
 																				</Button>
 																				<Button
 																					size="sm"
-																					className="rounded-full bg-[#11244DB3] hover:bg-[#11244D]"
+																					className="rounded-full bg-[#11244DB3] hover:bg-[#11244D]/90 text-white px-6"
 																					onClick={submitComment}
 																					disabled={!replyText.trim() || replySubmitting}
 																				>

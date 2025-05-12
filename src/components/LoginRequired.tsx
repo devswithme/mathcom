@@ -65,7 +65,7 @@ const LoginRequired: React.FC<LoginRequiredProps> = ({
           </AlertDialogAction>
           <AlertDialogAction
             onClick={handleLogin}
-            className="bg-[#11244DB2] text-white hover:bg-[#11244D]"
+            className="bg-[#11244DB2] text-white hover:bg-[#11244D]/90"
           >
             Log In
           </AlertDialogAction>

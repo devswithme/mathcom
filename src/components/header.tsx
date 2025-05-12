@@ -273,7 +273,7 @@ export default function Header() {
           {user ? (
             <Button
               onClick={handleAskClick}
-              className="bg-[#11244DB2] rounded-full uppercase hidden sm:flex font-bold transition-colors hover:bg-[#11244D] hover:shadow-md"
+              className="bg-[#11244DB2] rounded-full uppercase hidden sm:flex font-bold transition-colors hover:bg-[#11244D]/90 hover:shadow-md"
               size="lg"
             >
               <Plus strokeWidth={4} />
@@ -349,7 +349,7 @@ export default function Header() {
                 setLoginRedirectPath('/');
                 setShowLoginPopup(true);
               }}
-              className="rounded-full px-5 py-2 bg-[#11244DB2] text-white hover:bg-[#11244D]"
+              className="rounded-full px-5 py-2 bg-[#11244DB2] text-white hover:bg-[#11244D]/90"
             >
               Log In
             </Button>

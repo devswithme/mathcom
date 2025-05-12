@@ -62,10 +62,13 @@ const LatexEditor: React.FC<LatexEditorProps> = ({
 
   const handleBoldClick = () => insertTextAtCursor('**', '**');
   const handleItalicClick = () => insertTextAtCursor('*', '*');
-  const handleQuoteClick = () => insertTextAtCursor('> ');
+  const handleUnderlineClick = () => insertTextAtCursor('<u>', '</u>');
   const handleLinkClick = () => insertTextAtCursor('[', '](url)');
   const handleLatexClick = () => insertTextAtCursor('$', '$');
-  const handleImageClick = () => insertTextAtCursor('![alt text](', ')');
+  const handleBulletListClick = () => insertTextAtCursor('- ');
+  const handleNumberedListClick = () => insertTextAtCursor('1. ');
+  const handleSuperscriptClick = () => insertTextAtCursor('<sup>', '</sup>');
+  const handleSubscriptClick = () => insertTextAtCursor('<sub>', '</sub>');
 
   return (
     <div className={`rounded-lg border border-gray-200 bg-white ${className}`}>
@@ -84,10 +87,13 @@ const LatexEditor: React.FC<LatexEditorProps> = ({
             <FormattingToolbar 
               onBoldClick={handleBoldClick}
               onItalicClick={handleItalicClick}
-              onQuoteClick={handleQuoteClick}
+              onUnderlineClick={handleUnderlineClick}
               onLinkClick={handleLinkClick}
               onLatexClick={handleLatexClick}
-              onImageClick={handleImageClick}
+              onBulletListClick={handleBulletListClick}
+              onNumberedListClick={handleNumberedListClick}
+              onSuperscriptClick={handleSuperscriptClick}
+              onSubscriptClick={handleSubscriptClick}
             />
             <Textarea
               ref={textareaRef}

@@ -14,6 +14,8 @@ import LoginRequired from "@/components/LoginRequired";
 
 const EditProfilePage = () => {
   const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<{uid: string} | null>(null);
+  const [showLoginAlert, setShowLoginAlert] = useState<boolean>(false);
   const [userData, setUserData] = useState({
     username: "",
     about: "",
@@ -160,6 +162,8 @@ const EditProfilePage = () => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result as string);
+        // Explicitly set hasChanges when a file is selected
+        setHasChanges(true);
       };
       reader.readAsDataURL(file);
     }
@@ -174,7 +178,10 @@ const EditProfilePage = () => {
   };
 
   const handleSaveChanges = async () => {
-    if (!auth.currentUser || !hasChanges) return;
+    if (!auth.currentUser) return;
+    
+    // Force hasChanges to true if there's a selected file
+    if (!hasChanges && !selectedFile) return;
     
     setIsSaving(true);
     try {
@@ -214,6 +221,11 @@ const EditProfilePage = () => {
         updatedData.examLevels = [userData.examLevels[0]];
       } else {
         updatedData.examLevels = [];
+      }
+      
+      // Add avatarUrl to Firestore if a new image was uploaded
+      if (selectedFile && avatarUrl) {
+        updatedData.avatarUrl = avatarUrl;
       }
       
       await updateDoc(userRef, updatedData);
@@ -463,22 +475,11 @@ const EditProfilePage = () => {
           </div>
         </div>
       )}
+      
+      {/* Login Required Dialog */}
+      <LoginRequired isOpen={showLoginAlert} onClose={() => setShowLoginAlert(false)} />
     </div>
   );
 };
 
-export default EditProfilePage; 
-
-const handleCommentClick = () => {
-  if (!currentUser) {
-    // Show login required modal
-    setShowLoginAlert(true);
-  } else {
-    // Handle comment action
-  }
-};
-
-// Replace existing login alert dialog with LoginRequired component
-const [currentUser, setCurrentUser] = useState<{uid: string} | null>(null);
-const [showLoginAlert, setShowLoginAlert] = useState<boolean>(false);
-<LoginRequired isOpen={showLoginAlert} onClose={() => setShowLoginAlert(false)} />
+export default EditProfilePage;

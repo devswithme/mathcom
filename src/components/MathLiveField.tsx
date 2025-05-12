@@ -269,7 +269,9 @@ const MathLiveField: React.FC<MathLiveFieldProps> = ({
               mathField.style.width = '100%';
               mathField.style.minHeight = '50px';
               mathField.style.fontSize = '16px';
-              mathField.setAttribute('placeholder', placeholder || '');
+              // Add spaces using LaTeX spacing command '\;' between words to prevent them from being removed
+              const formattedPlaceholder = placeholder ? placeholder.replace(/ /g, '\\;') : '';
+              mathField.setAttribute('placeholder', formattedPlaceholder);
               
               // Clear the div and append the math-field
               el.innerHTML = '';
