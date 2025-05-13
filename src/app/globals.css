@@ -1,0 +1,329 @@
+/* stylelint-disable at-rule-no-unknown */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* stylelint-enable at-rule-no-unknown */
+
+/* Custom variables */
+:root {
+  --background: white;
+  --foreground: black;
+  --card: white;
+  --card-foreground: black;
+  --primary: #11244D;
+  --primary-foreground: white;
+  --secondary: #f9fafb;
+  --secondary-foreground: black;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --radius: 0.625rem;
+  --scrollbar-track: #f1f1f1;
+  --scrollbar-thumb: #c1c1c1;
+  --scrollbar-thumb-hover: #a1a1a1;
+  --vh: 1vh; /* Default value, will be updated via JS */
+}
+
+.dark {
+  --background: #111827;
+  --foreground: white;
+  --card: #111827;
+  --card-foreground: white;
+  --primary: white;
+  --primary-foreground: black;
+  --secondary: #1f2937;
+  --secondary-foreground: white;
+  --border: #374151;
+  --input: #374151;
+  --scrollbar-track: #2d3748;
+  --scrollbar-thumb: #4a5568;
+  --scrollbar-thumb-hover: #718096;
+}
+
+/* Animations for feedback popup */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* Loading animation for login popup */
+@keyframes loadingBar {
+  0% { width: 0; }
+  50% { width: 70%; }
+  100% { width: 100%; }
+}
+
+.animate-loadingBar {
+  animation: loadingBar 2s ease-in-out infinite;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.25s ease-out forwards;
+}
+
+/* Prevent overscroll in chat page */
+.overscroll-none {
+  overscroll-behavior: none;
+}
+
+.overscroll-contain {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent page scrolling for chat and ask pages */
+html:has(.chat-page),
+body:has(.chat-page) {
+  overflow: hidden !important;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+/* For iOS Safari */
+@supports (-webkit-touch-callout: none) {
+  html:has(.chat-page),
+  body:has(.chat-page) {
+    position: fixed;
+    height: -webkit-fill-available;
+    width: 100%;
+    overflow: hidden;
+  }
+}
+
+/* Ensure the container within the chat page is scrollable */
+.chat-page {
+  height: calc(var(--vh, 1vh) * 100);
+  max-height: calc(var(--vh, 1vh) * 100);
+  overflow: hidden;
+  display: flex;
+}
+
+/* Fix for mobile Safari height calculation */
+@supports (-webkit-touch-callout: none) {
+  .chat-page {
+    height: -webkit-fill-available;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-0;
+    box-sizing: border-box; /* Add this for consistent box-sizing */
+  }
+  body {
+    @apply bg-background text-foreground;
+    margin: 0; /* Ensure no unintended margin */
+    padding: 0; /* Ensure no unintended padding */
+  }
+  
+  /* Fix header styling to ensure it's white, not brown */
+  header {
+    @apply bg-white border-b border-gray-200;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  
+  /* Fix button styling */
+  .btn, button[class*="btn"] {
+    @apply rounded-md transition-colors;
+  }
+  
+  /* Simplified search input styling */
+  input[type="search"], input[type="text"] {
+    @apply bg-gray-50 border border-gray-200;
+  }
+}
+
+/* Modern, subtle scrollbar styling */
+/* For Webkit browsers (Chrome, Safari, newer Edge) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+/* Fix navbar X button issue by hiding it on desktop */
+@media (min-width: 768px) {
+  .md\:hidden {
+    display: none !important;
+  }
+}
+
+html {
+  overflow-y: auto;
+}
+
+.login-required-modal [data-radix-dialog-close],
+.login-required-modal button[aria-label='Close'] {
+  display: none !important;
+}
+
+/* Force solid backgrounds for dropdown menus */
+[data-radix-popper-content-wrapper] > div {
+  background-color: #ededed !important;
+  border-radius: 12px !important;
+  backdrop-filter: none !important;
+  background-image: none !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Custom close button position for login popup */
+.login-popup [data-radix-dialog-close] {
+  top: 12px !important;
+  right: 12px !important;
+}
+
+/* Stronger selector for login popup dialog close button */
+.login-popup [data-slot="dialog-close"],
+.login-popup button[data-radix-dialog-close] {
+  top: 12px !important;
+  right: 12px !important;
+  position: absolute !important;
+}
+
+/* Additional selector targeting specific Radix portal elements */
+[data-radix-popper-content-wrapper] {
+  contain: none !important;
+  z-index: 999 !important;
+}
+
+div[role="menu"] {
+  background-color: #ededed !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
+/* Simpler selector for menu items */
+[role="menuitem"] {
+  display: flex !important;
+  align-items: center !important;
+  padding: 8px 16px !important;
+  transition: background-color 0.15s ease !important;
+  width: 100% !important;
+  position: relative !important;
+  overflow: hidden !important;
+  background-color: transparent !important;
+}
+
+[role="menuitem"]:hover {
+  background-color: #d9d9d9 !important;
+}
+
+[role="menuitem"] svg {
+  margin-right: 12px !important;
+  width: 20px !important;
+  height: 20px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Ensure the text in menu items is properly aligned */
+[role="menuitem"] span {
+  font-weight: 500 !important;
+  font-size: 14px !important;
+}
+
+/* Menu separator */
+hr.dropdown-separator {
+  border-top: 1px solid rgba(0, 0, 0, 0.1) !important;
+  margin: 4px 0 !important;
+}
+
+/* Remove the pseudo elements that might cause issues */
+[role="menuitem"]::before,
+[role="menuitem"]::after,
+[role="menuitem"] > div::before,
+[role="menuitem"] > div::after {
+  display: none !important;
+}
+
+/* Remove the focus outline for all dropdown elements */
+[data-radix-popper-content-wrapper] *:focus,
+[role="menuitem"]:focus,
+[role="menuitem"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Dropdown separator styling */
+[role="separator"] {
+  height: 1px !important;
+  background-color: rgba(0, 0, 0, 0.1) !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Hide scrollbar utility */
+.scrollbar-none {
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* IE 10+ */
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important; /* Chrome, Safari, Opera */
+}
+
+.end-chat-dialog-no-x [data-radix-dialog-close],
+.end-chat-dialog-no-x button[aria-label="Close"] {
+  display: none !important;
+}
+
+:global(.ask-tutor-dialog-no-x [data-radix-dialog-close]),
+:global(.ask-tutor-dialog-no-x button[aria-label="Close"]) {
+  display: none !important;
+}
+
+.ask-tutor-dialog-no-x > button {
+  display: none !important;
+}
+
+.ask-tutor-dialog-no-x {
+  padding-top: 2.5rem !important;
+}
+
+.end-chat-dialog-no-x > button {
+  display: none !important;
+}
+
+.ask-tutor-dialog-no-x [data-radix-dialog-close],
+.ask-tutor-dialog-no-x button[aria-label="Close"] {
+  display: none !important;
+}
+
+/* TipTap placeholder styling */
+.ProseMirror p.is-empty:first-child::before,
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #9ca3af; /* Tailwind gray-400 */
+  pointer-events: none;
+  height: 0;
+  font-style: italic;
+}
