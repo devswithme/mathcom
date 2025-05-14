@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog"
 import { db } from '@/lib/firebase'
 import { collection, doc, getDoc, getDocs, addDoc, updateDoc, increment, query, orderBy, where, serverTimestamp } from 'firebase/firestore'
-import { useParams, useRouter as useNextRouter } from 'next/navigation'
+import { useParams, useRouter as useNextRouter, useSearchParams } from 'next/navigation'
 import { useRouter } from 'next/router'
 import { getFirebaseErrorMessage, safeFetchWithFallback } from '@/lib/firebase-utils'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -34,6 +34,10 @@ import LoginPopup from '@/components/LoginPopup'
 import SimpleShareDialog from '@/components/SimpleShareDialog'
 import { renderMathInNode } from '@/utils/mathlive'
 import MathLiveScript from '@/components/MathLiveScript'
+import ReactMarkdown from 'react-markdown'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
+import 'katex/dist/katex.min.css'
 
 // Function to format relative time
 const formatRelativeTime = (timestamp: number): string => {
@@ -110,6 +114,7 @@ const MentionTag: React.FC<{username: string}> = ({ username }) => {
 const Page = () => {
 	const params = useParams();
 	const router = useNextRouter();
+	const searchParams = useSearchParams();
 	const postId = params.id as string;
 	const commentInputRef = useRef<HTMLTextAreaElement>(null);
 	const pillInputRef = useRef<HTMLInputElement>(null);
@@ -153,6 +158,7 @@ const Page = () => {
 		!!(window as any).MathLive &&
 		!!customElements.get('math-field')
 	);
+	const fromCommunity = searchParams.get('from');
 	
 	// Listen for auth state changes
 	useEffect(() => {
@@ -711,7 +717,13 @@ const Page = () => {
 				<div className='w-full max-w-3xl px-4'>
 					<div className='space-y-6 pt-6'>
 						<button 
-							onClick={() => router.back()} 
+							onClick={() => {
+								if (fromCommunity) {
+									router.push(`/community/${fromCommunity}`);
+								} else {
+									router.push('/');
+								}
+							}} 
 							className="flex items-center gap-x-2 text-gray-600 hover:text-gray-900 my-2 bg-transparent border-0"
 						>
 							<ArrowLeftCircleIcon />
@@ -746,7 +758,32 @@ const Page = () => {
 								</div>
 								
 								<h1 className='text-2xl font-bold'>{post.title}</h1>
-								<div ref={descriptionRef} className='text-base font-normal' dangerouslySetInnerHTML={{ __html: post.description }} />
+								<div className='text-base font-normal'>
+									<ReactMarkdown
+										remarkPlugins={[remarkMath]}
+										rehypePlugins={[rehypeKatex]}
+										components={{
+											p: ({ children }) => <p style={{ margin: 0 }}>{children}</p>,
+											strong: ({ children }) => <strong style={{ fontWeight: 'bold' }}>{children}</strong>,
+											em: ({ children }) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
+											br: () => <br />,
+											code: ({ className, children }) => {
+												const match = /language-(\w+)/.exec(className || '');
+												return match ? (
+													<pre style={{ backgroundColor: '#f3f4f6', padding: '0.5em', borderRadius: '4px', overflow: 'auto' }}>
+														<code>{children}</code>
+													</pre>
+												) : (
+													<code style={{ backgroundColor: 'rgba(0,0,0,0.1)', padding: '0.2em 0.4em', borderRadius: '3px' }}>
+														{children}
+													</code>
+												);
+											},
+										}}
+									>
+										{post.description}
+									</ReactMarkdown>
+								</div>
 								
 								{post.imageURL && (
 									<div className='w-full aspect-video bg-neutral-100 rounded-xl my-5'>

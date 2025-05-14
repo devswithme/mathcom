@@ -121,6 +121,7 @@ const UserProfilePage = () => {
 
   // Add a mapping for community avatars
   const communityAvatars: Record<string, string> = {
+    general_math: '/community_avatars/general_math.png',
     cie_checkpoint: '/community_avatars/cie_checkpoint.png',
     cie_igcse: '/community_avatars/cie_igcse.png',
     cie_alevel: '/community_avatars/cie_alevel.png',

@@ -32,6 +32,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
 import clsx from 'clsx';
 import { db } from '@/lib/firebase';
@@ -52,6 +53,8 @@ export default function Header() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
+  const [showLeaveDialog, setShowLeaveDialog] = useState(false);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -161,8 +164,43 @@ export default function Header() {
     };
   }, [searchValue]);
 
+  // Helper: check if on chat page
+  const isOnChatPage = pathname === '/chat';
+
+  // Intercept navigation for Home, Explore, Ask
+  const handleNav = (href: string) => {
+    if (isOnChatPage) {
+      setPendingHref(href);
+      setShowLeaveDialog(true);
+    } else {
+      router.push(href);
+    }
+  };
+
   return (
     <>
+      {/* Leave Chat Confirmation Dialog */}
+      <AlertDialog open={showLeaveDialog} onOpenChange={setShowLeaveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              If you leave this page, your current chat will be lost. Are you sure you want to leave?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setShowLeaveDialog(false);
+                if (pendingHref) router.push(pendingHref);
+              }}
+            >
+              Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <header className="fixed top-0 z-50 w-full border-b-[0.1px] border-black py-2 flex justify-between items-center gap-x-4 sm:gap-x-10 bg-white px-8 h-[56px]">
         {/* Mobile menu button - shown only on small screens */}
         <Button 
@@ -174,9 +212,9 @@ export default function Header() {
           <Menu className="h-6 w-6" />
         </Button>
         
-        <Link href="/" className="ml-[-20px]">
+        <span onClick={() => handleNav('/')} className="ml-[-20px] cursor-pointer">
           <Image src="/logo.png" alt="logo" width={85} height={85} priority className="my-[-12px]" />
-        </Link>
+        </span>
         
         <form
           onSubmit={handleSearch}
@@ -252,7 +290,7 @@ export default function Header() {
           {/* Mobile Ask button */}
           {!user ? (
             <Button
-              onClick={handleAskClick}
+              onClick={() => handleNav('/ask')}
               className="md:hidden bg-transparent hover:bg-[#11244DB2]/10 rounded-full aspect-square p-0 border border-black hover:border-[#11244DB2] transition-colors"
               size="icon"
               variant="ghost"
@@ -261,7 +299,7 @@ export default function Header() {
             </Button>
           ) : (
             <Button
-              onClick={handleAskClick}
+              onClick={() => handleNav('/ask')}
               className="md:hidden bg-[#11244DB2] rounded-full aspect-square p-0"
               size="icon"
             >
@@ -272,7 +310,7 @@ export default function Header() {
           {/* Desktop Ask button - only shown for logged in users */}
           {user ? (
             <Button
-              onClick={handleAskClick}
+              onClick={() => handleNav('/ask')}
               className="bg-[#11244DB2] rounded-full uppercase hidden sm:flex font-bold transition-colors hover:bg-[#11244D]/90 hover:shadow-md"
               size="lg"
             >
@@ -281,7 +319,7 @@ export default function Header() {
             </Button>
           ) : (
             <Button
-              onClick={handleAskClick}
+              onClick={() => handleNav('/ask')}
               className="hidden sm:flex bg-transparent hover:bg-[#11244DB2]/10 rounded-full aspect-square p-2 transition-colors border border-black hover:border-[#11244DB2]"
               size="icon"
               variant="ghost"
@@ -378,7 +416,6 @@ export default function Header() {
       </header>
 
       {/* Login Alert Dialog */}
-      // Replace existing login alert dialog with LoginRequired component
       <LoginRequired isOpen={showLoginAlert} onClose={() => setShowLoginAlert(false)} />
 
       {/* Login Popup */}

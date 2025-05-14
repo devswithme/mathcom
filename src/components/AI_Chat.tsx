@@ -1,16 +1,32 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 
-const Chat = ({
+const Chat = forwardRef(({
   externalMessage,
   messageHistory,
-  onMessageRender
+  onMessageRender,
+  onStopStreaming
 }: {
   externalMessage?: string;
   messageHistory: { role: 'user' | 'assistant' | 'system'; content: string }[];
   onMessageRender?: (msg: { role: 'user' | 'assistant'; content: string }) => void;
-}) => {
+  onStopStreaming?: (stopFn: () => void) => void;
+}, ref) => {
   const streamingContentRef = useRef('');
-  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const userInitiatedAbortRef = useRef(false);
+
+  const stopStreaming = () => {
+    userInitiatedAbortRef.current = true;
+    abortControllerRef.current?.abort();
+  };
+
+  useImperativeHandle(ref, () => ({ stopStreaming }));
+
+  useEffect(() => {
+    if (onStopStreaming) {
+      onStopStreaming(stopStreaming);
+    }
+  }, [onStopStreaming]);
 
   const sendMessage = async (newMessage: string) => {
     if (!newMessage.trim() || !onMessageRender) return;
@@ -19,10 +35,14 @@ const Chat = ({
     onMessageRender({ role: 'user', content: newMessage });
 
     try {
+      userInitiatedAbortRef.current = false;
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
       const res = await fetch('http://localhost:5001/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: messageHistory }),
+        signal: abortController.signal,
       });
 
       if (!res.body) throw new Error("No response body");
@@ -45,10 +65,6 @@ const Chat = ({
               role: 'assistant',
               content: streamingContentRef.current
             });
-
-            if ((window as any).MathJax?.typesetPromise) {
-              (window as any).MathJax.typesetPromise();
-            }
           }
         }
       }
@@ -61,7 +77,14 @@ const Chat = ({
         });
       }
     } catch (error) {
-      onMessageRender({ role: 'assistant', content: 'Error reaching server.' });
+      if ((error as any).name === 'AbortError') {
+        if (userInitiatedAbortRef.current) {
+          onMessageRender?.({ role: 'assistant', content: '[Stopped by user]' });
+        }
+        // else: do not show any message if abort was not user-initiated
+      } else {
+        onMessageRender?.({ role: 'assistant', content: 'Error reaching server.' });
+      }
     }
   };
 
@@ -70,9 +93,17 @@ const Chat = ({
       streamingContentRef.current = ''; // reset stream buffer
       sendMessage(externalMessage);
     }
+    // No abort on prop change
   }, [externalMessage]);
 
+  // Only abort on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   return null;
-};
+});
 
 export default Chat;

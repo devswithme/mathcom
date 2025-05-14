@@ -1,22 +1,45 @@
 'use client';
 
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpCircle, HelpCircle, MessageCircle, X as LucideX } from "lucide-react";
-import React, { useEffect, useState, useRef } from "react";
+import { ArrowUpCircle, HelpCircle, MessageCircle, X as LucideX, Square as StopSquare } from "lucide-react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import AI_Chat from "@/components/AI_Chat";
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
-import 'katex/dist/katex.min.css';
 import FeedbackPopup from "@/components/FeedbackPopup";
-import { auth } from '@/lib/firebase'; // Added import for auth
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth'; // Added import for onAuthStateChanged and FirebaseUser
+import { auth, db } from '@/lib/firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { ChatShortcutsProvider } from '@/context/ChatShortcutsContext';
+import { useChatShortcutsHandlersBridge } from '@/context/ChatShortcutsHandlersBridgeContext';
+import { addDoc, collection, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+
+// Helper: auto-wrap common LaTeX patterns in $...$ if not already wrapped
+function autoWrapLatex(content: string): string {
+  // Only wrap if not already inside $...$
+  // This is a simple heuristic and can be improved for edge cases
+  // Patterns: \frac, \sqrt, ^{...}, _{...}, x^2, y^3, etc.
+  const latexPattern = /(?<!\$)(\\frac\{[^}]+\}\{[^}]+\}|\\sqrt\{[^}]+\}|[a-zA-Z]\^\d+|[a-zA-Z]_\d+|\\[a-zA-Z]+)(?![^{]*\$)/g;
+  return content.replace(latexPattern, (match) => `$${match}$`);
+}
 
 // Helper component to render markdown content
-const MarkdownContent = ({ content }: { content: string }) => {
+const MarkdownContent = ({ content, autoWrap = false }: { content: string, autoWrap?: boolean }) => {
+  const processed = autoWrap ? autoWrapLatex(content) : content;
   return (
     <ReactMarkdown
       remarkPlugins={[remarkMath]}
@@ -43,7 +66,7 @@ const MarkdownContent = ({ content }: { content: string }) => {
         },
       }}
     >
-      {content}
+      {processed}
     </ReactMarkdown>
   );
 };
@@ -58,6 +81,8 @@ const Page = () => {
   const [currentUserProfileImageUrl, setCurrentUserProfileImageUrl] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const latestMessageRef = useRef<HTMLDivElement | null>(null); // Ref for latest message
+  const scrollOffsetRef = useRef<number | null>(null);
+  const teleportLockRef = useRef(false);
   const router = useRouter();
   const [showEndChatDialog, setShowEndChatDialog] = useState(false);
   const [showAskTutorDialog, setShowAskTutorDialog] = useState(false);
@@ -67,9 +92,22 @@ const Page = () => {
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [aiThinking, setAiThinking] = useState(false);
   const [showAiThinkingBubble, setShowAiThinkingBubble] = useState(false);
+  const aiChatRef = useRef<any>(null);
+  const [stopFn, setStopFn] = useState<(() => void) | null>(null);
+  const { setHandlers } = useChatShortcutsHandlersBridge();
 
   // Placeholder for AI profile picture
   const aiProfileImageUrl: string | null = "/mathcomai.png";
+
+  // Cache original question from sessionStorage on first load
+  const [originalQuestion, setOriginalQuestion] = useState(() => {
+    return {
+      title: sessionStorage.getItem('ai_question_title') || '',
+      description: sessionStorage.getItem('ai_question_description') || '',
+      community: sessionStorage.getItem('ai_question_community') || 'cie_checkpoint',
+      anonymous: JSON.parse(sessionStorage.getItem('ai_question_anonymous') || 'false'),
+    };
+  });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
@@ -107,12 +145,6 @@ const Page = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if ((window as any).MathJax) {
-      (window as any).MathJax.typesetPromise();
-    }
-  }, [messages]); // Rerun MathJax when messages change
-
   // Prevent overscroll behavior
   useEffect(() => {
     const chatContainer = chatContainerRef.current;
@@ -136,6 +168,110 @@ const Page = () => {
       chatContainer.removeEventListener('touchmove', preventOverscroll);
     };
   }, []);
+
+  // Handler: Similar Qs
+  const handleSimilarQs = useCallback(async () => {
+    setLoadingSimilar(true);
+    setSimilarQuestion(null);
+    try {
+      const res = await fetch('http://localhost:5001/ask-similar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages }),
+      });
+      const text = await res.text();
+      setSimilarQuestion(text.trim());
+    } catch (err) {
+      setSimilarQuestion('Error generating similar question.');
+    } finally {
+      setLoadingSimilar(false);
+    }
+  }, [messages]);
+
+  // Handler: Ask Tutor
+  const handleAskTutor = useCallback(async () => {
+    setShowAskTutorDialog(true);
+  }, []);
+  const confirmAskTutor = async () => {
+    setIsPosting(true);
+    try {
+      // Use cached original question
+      const { title, description, community, anonymous } = originalQuestion;
+      console.log('Posting to community:', { title, description, community, anonymous });
+
+      // Get current user
+      const user = auth.currentUser;
+      if (!user) {
+        toast('You must be logged in to post a question.', { variant: 'error' });
+        setIsPosting(false);
+        return;
+      }
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+      const userData = userDoc.data();
+
+      // Prepare post data (same as ask page)
+      const postData: any = {
+        title,
+        description,
+        community,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        upvotes: 0,
+        commentsCount: 0,
+        anonymous,
+      };
+      if (!anonymous) {
+        postData.userId = user.uid;
+        postData.userName = userData?.displayName || user.displayName || 'User';
+        postData.userPhotoURL = userData?.photoURL || user.photoURL || '/defaultprofile.png';
+      } else {
+        postData.userId = user.uid; // For moderation
+        postData.userName = 'Anonymous User';
+        postData.userPhotoURL = '/defaultprofile.png';
+      }
+
+      // Add post to Firestore
+      const docRef = await addDoc(collection(db, 'posts'), postData);
+
+      // Clear chat
+      setMessages([]);
+      setShowAskTutorDialog(false);
+      setIsPosting(false);
+
+      // Remove sessionStorage keys after posting
+      sessionStorage.removeItem('ai_question_title');
+      sessionStorage.removeItem('ai_question_description');
+      sessionStorage.removeItem('ai_question_community');
+      sessionStorage.removeItem('ai_question_anonymous');
+
+      // Redirect to the new post page and show success toast
+      toast('Your question has been posted to the community!', { variant: 'success' });
+      router.push(`/post/${docRef.id}`);
+    } catch (error) {
+      setIsPosting(false);
+      setShowAskTutorDialog(false);
+      toast('There was an error posting your question. Please try again.', { variant: 'error' });
+      console.error('Error posting to community:', error);
+    }
+  };
+
+  // Handler: End Chat
+  const handleEndChat = useCallback(() => {
+    setShowEndChatDialog(true);
+  }, []);
+  const confirmEndChat = () => {
+    setShowEndChatDialog(false);
+    router.push('/feedback');
+  };
+
+  // Register handlers with the bridge context
+  useEffect(() => {
+    setHandlers({
+      handleSimilarQs,
+      handleAskTutor,
+      handleEndChat,
+    });
+  }, [handleSimilarQs, handleAskTutor, handleEndChat, setHandlers]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -168,64 +304,12 @@ const Page = () => {
     setShowFeedbackPopup(true);
   };
 
-  // Auto-scroll to the newest message (smooth scroll, align top of latest message to top of chat container, only scroll chat area)
-  useEffect(() => {
-    const container = chatContainerRef.current;
-    const latest = latestMessageRef.current;
-    if (container && latest) {
-      container.scrollTo({ top: latest.offsetTop, behavior: 'smooth' });
-    }
-  }, [messages]);
-
   // Helper: get last user message
   const getLastUserMessage = () => {
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === 'user') return messages[i].content;
     }
     return '';
-  };
-
-  // Handler: Similar Qs
-  const handleSimilarQs = async () => {
-    setLoadingSimilar(true);
-    setSimilarQuestion(null);
-    try {
-      const res = await fetch('http://localhost:5001/ask-similar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages }),
-      });
-      const text = await res.text();
-      setSimilarQuestion(text.trim());
-    } catch (err) {
-      setSimilarQuestion('Error generating similar question.');
-    } finally {
-      setLoadingSimilar(false);
-    }
-  };
-
-  // Handler: Ask Tutor
-  const handleAskTutor = async () => {
-    setShowAskTutorDialog(true);
-  };
-  const confirmAskTutor = async () => {
-    setIsPosting(true);
-    // Placeholder: Post to community forum
-    const lastUserMsg = getLastUserMessage();
-    // await postToCommunity(lastUserMsg, messages); // Implement this
-    setMessages([]);
-    setIsPosting(false);
-    setShowAskTutorDialog(false);
-    router.push('/community'); // Or to the new post
-  };
-
-  // Handler: End Chat
-  const handleEndChat = () => {
-    setShowEndChatDialog(true);
-  };
-  const confirmEndChat = () => {
-    setShowEndChatDialog(false);
-    router.push('/feedback');
   };
 
   useEffect(() => {
@@ -256,15 +340,46 @@ const Page = () => {
     }
   }, []);
 
+  // Teleportation: scroll to latest message after assistant response
+  useEffect(() => {
+    const el = latestMessageRef.current;
+    const container = chatContainerRef.current;
+    if (el && container) {
+      const rect = el.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      const offset = rect.top - containerRect.top - 24;
+
+      console.log("Teleporting to latest user message");
+      container.scrollTo({
+        top: container.scrollTop + offset,
+        behavior: 'auto',
+      });
+
+      scrollOffsetRef.current = null;
+      teleportLockRef.current = false;
+    }
+  }, [submittedMessage]);
+
   return (
-    <div className="chat-page w-full px-8 overscroll-none -mt-[8px] grid grid-cols-[auto_1fr_auto] gap-x-8 h-full min-h-0">
-      <div className="flex-grow relative flex flex-col bg-neutral-100 rounded-md overflow-hidden h-[calc(100vh-56px)] min-h-0 max-h-[calc(100vh-56px)] max-w-[calc(100vw-320px)]">
+    <div className="chat-page w-full overscroll-none -mt-[8px] flex h-full min-h-0">
+      <div className="flex flex-col flex-1 max-w-5xl w-full mx-auto px-8 h-[calc(100vh-56px)] min-h-0 max-h-[calc(100vh-56px)] rounded-md overflow-hidden">
         <div 
           ref={chatContainerRef}
-          className="h-full min-h-0 max-h-full overflow-y-auto p-6 overscroll-contain"
+          className="h-full min-h-0 max-h-full overflow-y-scroll pt-8 pb-6 px-8 overscroll-contain chat-scrollarea"
+          style={{
+            scrollbarGutter: 'stable',
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(180,180,180,0.5) transparent'
+          }}
         >
           {messages.map((message, index) => (
-            <div key={`${message.role}-${index}`} className="mb-8 w-full" ref={index === messages.length - 1 ? latestMessageRef : null}>
+            <div 
+              key={`${message.role}-${index}`} 
+              className="mb-8 w-full"
+            >
+              {message.role === 'user' && index === messages.length - 2 && (
+                <div ref={latestMessageRef} className="h-6" />
+              )}
               {message.role === 'assistant' ? (
                 <div className="flex w-full items-start">
                   {aiProfileImageUrl ? (
@@ -272,14 +387,14 @@ const Page = () => {
                   ) : (
                     <div className="w-10 h-10 bg-neutral-300 rounded-full shrink-0 mr-3 -mt-1" />
                   )}
-                  <div className="flex flex-col items-start w-[70%] max-w-full max-w-[600px]">
+                  <div className="flex flex-col items-start w-full max-w-full">
                     <span className="text-sm font-semibold mb-1 text-left text-neutral-700 flex items-center gap-2">
                       MathCom AI
                     </span>
-                    <div className="text-black whitespace-pre-line overflow-hidden max-h-[600px] overflow-y-auto" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                    <div className="text-black whitespace-pre-line overflow-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                       {aiThinking && index === messages.length - 1
                         ? <span className="animate-pulse text-gray-600 text-base">is thinking<span className="animate-bounce">...</span></span>
-                        : <MarkdownContent content={message.content} />
+                        : <MarkdownContent content={message.content} autoWrap={true} />
                       }
                     </div>
                   </div>
@@ -287,7 +402,7 @@ const Page = () => {
               ) : (
                 <div className="flex w-full justify-end items-end">
                   <div className="flex flex-col items-end max-w-[70%] w-[70%] max-w-full max-w-[600px]">
-                    <div className="bg-neutral-100 text-black rounded-xl p-3 border border-neutral-300 whitespace-pre-line overflow-hidden max-h-[600px] overflow-y-auto" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
+                    <div className="text-black p-3 whitespace-pre-line overflow-hidden border rounded-xl" style={{ wordBreak: 'break-word', overflowWrap: 'break-word', borderColor: 'rgba(0,0,0,0.7)' }}>
                       <MarkdownContent content={message.content} />
                     </div>
                   </div>
@@ -296,9 +411,13 @@ const Page = () => {
             </div>
           ))}
 
+          {/* spacer so newest message can align to top */}
+          <div style={{ height: '60vh' }} />
+
           <AI_Chat
+            ref={aiChatRef}
             externalMessage={submittedMessage}
-            messageHistory={messages.filter(m => m.role !== 'assistant' || m.content)} // Only send non-placeholder messages to AI
+            messageHistory={messages.filter(m => m.role !== 'assistant' || m.content)}
             onMessageRender={(msg) => {
               setMessages((prev) => {
                 if (msg.role === 'assistant') {
@@ -331,12 +450,14 @@ const Page = () => {
               if (msg.role === 'assistant') {
                 setSubmittedMessage('');
               }
+              // No auto-scroll or scrollTo logic here
             }}
+            onStopStreaming={setStopFn}
           />
         </div>
 
-        <div className="p-6 bg-neutral-100">
-          <div className="flex items-center justify-between bg-neutral-200 rounded-lg p-3 relative">
+        <div className="p-6">
+          <div className="flex items-center justify-between p-3 relative rounded-lg" style={{ background: '#f4f4f4' }}>
             <Textarea
               ref={textareaRef}
               placeholder="Ask MathCom AI"
@@ -351,15 +472,31 @@ const Page = () => {
                   el.style.height = Math.min(el.scrollHeight, 160) + 'px';
                 }
               }}
+              disabled={aiThinking}
             />
-            <button 
-              onClick={handleSendMessage}
-              disabled={!inputValue.trim()}
-              className={`absolute bottom-4 right-4 p-1 rounded-full ${inputValue.trim() ? 'text-[#11244D] hover:bg-[#11244D]/10' : 'text-neutral-400'} transition-colors`}
-              style={{ zIndex: 2 }}
-            >
-              <ArrowUpCircle className="w-6 h-6" />
-            </button>
+            {aiThinking ? (
+              <button
+                onClick={() => {
+                  stopFn?.();
+                  setAiThinking(false);
+                }}
+                className="absolute bottom-4 right-4 p-1 rounded-full text-[#7f0000] transition-colors"
+                style={{ zIndex: 2 }}
+                aria-label="Stop AI"
+              >
+                <StopSquare className="w-6 h-6" />
+              </button>
+            ) : (
+              <button
+                onClick={handleSendMessage}
+                disabled={!inputValue.trim()}
+                className={`absolute bottom-4 right-4 p-1 rounded-full ${inputValue.trim() ? 'text-[#11244D] hover:bg-[#11244D]/10' : 'text-neutral-400'} transition-colors`}
+                style={{ zIndex: 2 }}
+                aria-label="Send"
+              >
+                <ArrowUpCircle className="w-6 h-6" />
+              </button>
+            )}
           </div>
           
           {/* Mobile close session button */}
@@ -373,44 +510,6 @@ const Page = () => {
           </div>
         </div>
       </div>
-
-      <div className="w-[200px] hidden lg:block pt-4">
-        <div className="border border-neutral-200 p-4 rounded-lg bg-white">
-          <h2 className="font-semibold text-sm mb-2 px-1">Shortcuts</h2>
-          <div className="space-y-3">
-            <div className="bg-neutral-100 flex items-center gap-x-3 py-2 px-3 rounded-full hover:bg-neutral-200 transition-colors cursor-pointer text-sm w-full pl-4 justify-start"
-              onClick={handleSimilarQs}>
-              <span className="" style={{ fontSize: '1.3rem', minWidth: '2.2rem', textAlign: 'center', verticalAlign: 'middle' }}>❓</span>
-              <h3 className="font-medium text-sm w-full text-left">Similar Qs</h3>
-            </div>
-            {loadingSimilar && <div className="mt-2 text-sm text-gray-500">Generating similar question...</div>}
-            {similarQuestion && <div className="mt-2 p-3 bg-blue-50 rounded text-blue-900 text-sm">{similarQuestion}</div>}
-            <div className="bg-neutral-100 flex items-center gap-x-3 py-2 px-3 rounded-full hover:bg-neutral-200 transition-colors cursor-pointer text-sm w-full pl-4 justify-start"
-              onClick={handleAskTutor}>
-              <span className="" style={{ fontSize: '1.2rem', minWidth: '2.2rem', textAlign: 'center', verticalAlign: 'middle' }}>🧑‍🏫</span>
-              <h3 className="font-medium text-sm w-full text-left">Ask Tutor</h3>
-            </div>
-            <button 
-              onClick={handleEndChat} 
-              className="w-full block"
-            >
-              <div className="bg-[#7f0000] flex items-center gap-x-3 py-2 px-3 rounded-full hover:bg-[#a30000] transition-colors cursor-pointer text-sm w-full pl-4 justify-start">
-                <span className="flex items-center justify-center" style={{ fontSize: '1.2rem', minWidth: '2.2rem', textAlign: 'center', verticalAlign: 'middle' }}>
-                  <LucideX className="w-5 h-5 text-white" strokeWidth={3} />
-                </span>
-                <h3 className="font-medium text-sm w-full text-left text-white">End Chat</h3>
-              </div>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Feedback Popup */}
-      <FeedbackPopup 
-        isOpen={showFeedbackPopup} 
-        onClose={() => setShowFeedbackPopup(false)} 
-        sessionMessages={messages}
-      />
 
       {/* End Chat Confirmation Dialog */}
       <Dialog open={showEndChatDialog} onOpenChange={setShowEndChatDialog}>
@@ -468,7 +567,12 @@ const Page = () => {
   </div>
 </Dialog>
 
-
+      {/* Feedback Popup */}
+      <FeedbackPopup 
+        isOpen={showFeedbackPopup} 
+        onClose={() => setShowFeedbackPopup(false)} 
+        sessionMessages={messages}
+      />
     </div>
   );
 };

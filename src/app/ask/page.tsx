@@ -53,10 +53,41 @@ const communityOptions = [
 
 // Add a mapping for community avatars
 const communityAvatars: Record<string, string> = {
+  general_math: '/community_avatars/general_math.png',
   cie_checkpoint: '/community_avatars/cie_checkpoint.png',
   cie_igcse: '/community_avatars/cie_igcse.png',
   cie_alevel: '/community_avatars/cie_alevel.png',
 };
+
+// Helper: Convert TipTap HTML to plain text with $...$ for math
+function tiptapHtmlToTextWithMath(html: string): string {
+  if (typeof window === 'undefined' || !html) return html;
+  const parser = new window.DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  let result = '';
+  function walk(node: Node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      result += node.textContent;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      const el = node as HTMLElement;
+      if (el.getAttribute('data-type') === 'math' && el.hasAttribute('data-latex')) {
+        const latex = el.getAttribute('data-latex');
+        result += ` $${latex}$ `;
+      } else {
+        for (const child of Array.from(el.childNodes)) {
+          walk(child);
+        }
+        if ([
+          'P', 'DIV', 'BR', 'LI', 'UL', 'OL', 'SECTION', 'ARTICLE', 'BLOCKQUOTE', 'HR', 'TABLE', 'TR', 'TD', 'TH', 'HEADER', 'FOOTER', 'MAIN'
+        ].includes(el.tagName)) {
+          result += '\n';
+        }
+      }
+    }
+  }
+  walk(doc.body);
+  return result.replace(/\n{2,}/g, '\n').replace(/ +/g, ' ').replace(/\s+\n/g, '\n').trim();
+}
 
 export default function AskPage() {
   const searchParams = useSearchParams();
@@ -189,7 +220,7 @@ useEffect(() => {
       // Prepare post data
       const postData: any = {
         title,
-        description,
+        description: tiptapHtmlToTextWithMath(description),
         community: selectedCommunity,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -375,27 +406,25 @@ useEffect(() => {
                 {isPosting ? "Posting..." : "Post"}
               </Button>
 
-              <Button size="lg" className="bg-[#7F0000] hover:bg-[#6a0000] text-white rounded-full !font-bold"
+              <Button
+                type="button"
+                size="lg"
+                className="bg-[#7F0000] hover:bg-[#6a0000] text-white rounded-full !font-bold"
+                style={{ zIndex: 9999, position: 'relative' }}
                 onClick={() => {
-                  // Convert math-expression spans to LaTeX
+                  // Convert TipTap HTML to plain text with $...$ for math
                   const html = description;
                   let text = html;
                   if (typeof window !== 'undefined') {
-                    const div = document.createElement('div');
-                    div.innerHTML = html;
-                    // Replace all math-expression spans with $$latex$$
-                    div.querySelectorAll('span.math-expression').forEach(span => {
-                      const latex = span.getAttribute('data-latex');
-                      if (latex) {
-                        const latexNode = document.createTextNode(`$$${latex}$$`);
-                        span.parentNode?.replaceChild(latexNode, span);
-                      }
-                    });
-                    text = div.textContent || '';
+                    text = tiptapHtmlToTextWithMath(html);
                   }
+                  // Debug log
+                  console.log('Storing to sessionStorage:', { title, text, selectedCommunity, postAnonymously });
                   sessionStorage.setItem('ai_question_title', title);
                   sessionStorage.setItem('ai_question_description', text);
-                  // (Add image support here if needed)
+                  sessionStorage.setItem('ai_question_community', selectedCommunity);
+                  sessionStorage.setItem('ai_question_anonymous', JSON.stringify(postAnonymously));
+                  sessionStorage.setItem('fromAsk', 'true');
                   router.push('/chat');
                 }}
               >

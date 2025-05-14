@@ -124,7 +124,12 @@ function AlertDialogAction({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
   return (
     <AlertDialogPrimitive.Action
-      className={cn(buttonVariants(), className)}
+      data-slot="alert-dialog-action"
+      className={cn(
+        buttonVariants({ variant: "default" }),
+        "opacity-70 hover:opacity-90 transition-opacity",
+        className
+      )}
       {...props}
     />
   )

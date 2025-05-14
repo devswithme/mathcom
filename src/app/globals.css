@@ -83,7 +83,6 @@
 html:has(.chat-page),
 body:has(.chat-page) {
   overflow: hidden !important;
-  position: fixed;
   width: 100%;
   height: 100%;
   touch-action: none;
@@ -93,7 +92,6 @@ body:has(.chat-page) {
 @supports (-webkit-touch-callout: none) {
   html:has(.chat-page),
   body:has(.chat-page) {
-    position: fixed;
     height: -webkit-fill-available;
     width: 100%;
     overflow: hidden;
@@ -102,10 +100,18 @@ body:has(.chat-page) {
 
 /* Ensure the container within the chat page is scrollable */
 .chat-page {
-  height: calc(var(--vh, 1vh) * 100);
-  max-height: calc(var(--vh, 1vh) * 100);
+  /* Fill the viewport but allow children to control scrolling */
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
   overflow: hidden;
-  display: flex;
+}
+
+.chat-page > * {
+  flex: 1 1 auto;
+  min-height: 0; /* allows internal scroll containers to take over */
 }
 
 /* Fix for mobile Safari height calculation */
@@ -176,10 +182,6 @@ body:has(.chat-page) {
   .md\:hidden {
     display: none !important;
   }
-}
-
-html {
-  overflow-y: auto;
 }
 
 .login-required-modal [data-radix-dialog-close],
@@ -326,4 +328,27 @@ hr.dropdown-separator {
   pointer-events: none;
   height: 0;
   font-style: italic;
+}
+
+@import 'katex/dist/katex.min.css';
+
+/* Prevent native scroll anchoring from affecting teleport behavior */
+.chat-scrollarea {
+  direction: ltr; /* Ensure left-to-right for scrollbar */
+  overflow-y: scroll;
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
+.chat-scrollarea::-webkit-scrollbar {
+  width: 8px;
+  background: #f1f1f1;
+}
+.chat-scrollarea::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+/* Always keep MathLive keyboard on top */
+.ML__keyboard {
+  z-index: 2147483647 !important;
 }
