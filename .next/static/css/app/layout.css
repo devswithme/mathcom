@@ -1924,6 +1924,9 @@ input[type="search"], input[type="text"] {
 .pt-\[40px\] {
   padding-top: 40px;
 }
+.pt-\[56px\] {
+  padding-top: 56px;
+}
 .text-left {
   text-align: left;
 }
