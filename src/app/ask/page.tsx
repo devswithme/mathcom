@@ -46,6 +46,7 @@ import LatexEditor from '@/components/LatexEditor';
 import TipTapEditor from '@/components/TipTapEditor';
 
 const communityOptions = [
+  { label: 'm/general_math', value: 'general_math' },
   { label: 'm/cie_checkpoint', value: 'cie_checkpoint' },
   { label: 'm/cie_igcse', value: 'cie_igcse' },
   { label: 'm/cie_alevel', value: 'cie_alevel' },
@@ -278,6 +279,24 @@ useEffect(() => {
     }
   };
 
+  const handleAskAI = () => {
+    console.log('handleAskAI called');
+    // Clear any previous chat session flags
+    sessionStorage.removeItem('ai_chat_visited');
+    sessionStorage.removeItem('ai_question_title');
+    sessionStorage.removeItem('ai_question_description');
+    sessionStorage.removeItem('ai_question_community');
+    sessionStorage.removeItem('ai_question_anonymous');
+
+    sessionStorage.setItem('ai_question_title', title);
+    sessionStorage.setItem('ai_question_description', tiptapHtmlToTextWithMath(description));
+    sessionStorage.setItem('ai_question_community', selectedCommunity);
+    sessionStorage.setItem('ai_question_anonymous', JSON.stringify(postAnonymously));
+    console.log('handleAskAI:', { title, description, selectedCommunity, postAnonymously });
+    console.log('Redirecting to /chat');
+    router.push('/chat');
+  };
+
   // Formatting handlers no longer needed with Quill
 
   return (
@@ -398,7 +417,7 @@ useEffect(() => {
               <Button
                 size="lg"
                 variant="outline"
-                className="rounded-full"
+                className="rounded-full opacity-80 hover:opacity-100 hover:bg-gray-100 hover:text-gray-900 transition-all"
                 onClick={handlePost}
                 disabled={isPosting}
               >
@@ -410,23 +429,8 @@ useEffect(() => {
                 type="button"
                 size="lg"
                 className="bg-[#7F0000] hover:bg-[#6a0000] text-white rounded-full !font-bold"
-                style={{ zIndex: 9999, position: 'relative' }}
-                onClick={() => {
-                  // Convert TipTap HTML to plain text with $...$ for math
-                  const html = description;
-                  let text = html;
-                  if (typeof window !== 'undefined') {
-                    text = tiptapHtmlToTextWithMath(html);
-                  }
-                  // Debug log
-                  console.log('Storing to sessionStorage:', { title, text, selectedCommunity, postAnonymously });
-                  sessionStorage.setItem('ai_question_title', title);
-                  sessionStorage.setItem('ai_question_description', text);
-                  sessionStorage.setItem('ai_question_community', selectedCommunity);
-                  sessionStorage.setItem('ai_question_anonymous', JSON.stringify(postAnonymously));
-                  sessionStorage.setItem('fromAsk', 'true');
-                  router.push('/chat');
-                }}
+                onClick={handleAskAI}
+                disabled={!title.trim()}
               >
                 Ask AI
               </Button>
@@ -438,14 +442,10 @@ useEffect(() => {
                       <Info className="w-5 h-5 cursor-pointer text-gray-600" />
                     </button>
                   </TooltipTrigger>
-                  <TooltipContent side="top" align="end" className="max-w-xs p-4 text-base bg-neutral-100 text-black rounded-lg shadow border border-gray-200">
-                    <div className="flex items-center mb-2">
-                      <Info className="w-6 h-6 text-[#11244D]/70 mr-3" />
-                      <span className="font-semibold text-[#11244D] text-lg">About MathCom AI</span>
-                    </div>
-                    <div className="text-[#11244D]/80 text-base space-y-2">
-                      <p>An AI tutor designed to guide you—not just give answers.</p>
-                      <p>Still in beta, so remember to double-check responses.</p>
+                  <TooltipContent side="top" align="end" className="max-w-xs p-4 text-sm bg-white text-black rounded-lg shadow border border-gray-200 z-50">
+                    <div className="space-y-2">
+                      <p>Post: Share your question with the community for others to help.</p>
+                      <p>Ask AI: Chat privately with our AI tutor to get step-by-step guidance.</p>
                     </div>
                   </TooltipContent>
                 </Tooltip>

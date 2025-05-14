@@ -7,10 +7,15 @@ from deepseek_tokenizer import (
     reset_user_tokens, update_user_token_usage, get_time_until_reset,
     get_user_token_usage
 )
+from summarize import summarize_chat
 import logging
 
 app = Flask(__name__)
-CORS(app, resources={r"/ask": {"origins": ["http://localhost:3000", "http://localhost:3007", "http://localhost:3008"]}})
+CORS(app, resources={
+    r"/ask": {"origins": ["http://localhost:3000", "http://localhost:3007", "http://localhost:3008"]},
+    r"/ask-similar": {"origins": ["http://localhost:3000", "http://localhost:3007", "http://localhost:3008"]},
+    r"/summarize-chat": {"origins": ["http://localhost:3000", "http://localhost:3007", "http://localhost:3008"]},
+})
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -120,6 +125,19 @@ def get_token_usage():
         "next_reset": next_reset_time,
         "percentage_used": percentage_used
     })
+
+@app.route('/summarize-chat', methods=['POST'])
+def summarize_chat_endpoint():
+    try:
+        data = request.get_json()
+        messages = data.get('messages', [])
+        if not messages:
+            return jsonify({"error": "No messages provided"}), 400
+        summary = summarize_chat(messages)
+        return jsonify({"summary": summary})
+    except Exception as e:
+        logger.error(f"Error in /summarize-chat: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5001, debug=False)

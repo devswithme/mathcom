@@ -238,12 +238,6 @@ const Page = () => {
       setShowAskTutorDialog(false);
       setIsPosting(false);
 
-      // Remove sessionStorage keys after posting
-      sessionStorage.removeItem('ai_question_title');
-      sessionStorage.removeItem('ai_question_description');
-      sessionStorage.removeItem('ai_question_community');
-      sessionStorage.removeItem('ai_question_anonymous');
-
       // Redirect to the new post page and show success toast
       toast('Your question has been posted to the community!', { variant: 'success' });
       router.push(`/post/${docRef.id}`);
@@ -261,7 +255,13 @@ const Page = () => {
   }, []);
   const confirmEndChat = () => {
     setShowEndChatDialog(false);
-    router.push('/feedback');
+    // Remove sessionStorage items only when ending chat
+    sessionStorage.removeItem('ai_question_title');
+    sessionStorage.removeItem('ai_question_description');
+    sessionStorage.removeItem('ai_question_community');
+    sessionStorage.removeItem('ai_question_anonymous');
+    // Instead of redirecting, open FeedbackPopup
+    setShowFeedbackPopup(true);
   };
 
   // Register handlers with the bridge context
@@ -312,6 +312,20 @@ const Page = () => {
     return '';
   };
 
+  // Redirect to home page immediately on mount, BUT only if not coming from ask page
+  useEffect(() => {
+    // Remove reload protection: do not check ai_chat_visited
+    const askTitle = sessionStorage.getItem('ai_question_title');
+    const askDesc = sessionStorage.getItem('ai_question_description');
+    console.log('chat page session:', { askTitle, askDesc });
+    // Only redirect if BOTH are missing or empty
+    if ((!askTitle || askTitle.trim() === '') && (!askDesc || askDesc.trim() === '')) {
+      router.push('/');
+      return;
+    }
+    // No need to set ai_chat_visited
+  }, [router]);
+
   useEffect(() => {
     // Check for question from Ask page via sessionStorage
     const askTitle = sessionStorage.getItem('ai_question_title');
@@ -335,8 +349,7 @@ const Page = () => {
         ]);
         setSubmittedMessage(combined);
       }
-      sessionStorage.removeItem('ai_question_title');
-      sessionStorage.removeItem('ai_question_description');
+      // Do NOT remove sessionStorage here anymore
     }
   }, []);
 
@@ -359,6 +372,17 @@ const Page = () => {
       teleportLockRef.current = false;
     }
   }, [submittedMessage]);
+
+  useEffect(() => {
+    // Warn before reload/close with the browser's native dialog
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+      return '';
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
   return (
     <div className="chat-page w-full overscroll-none -mt-[8px] flex h-full min-h-0">
@@ -572,6 +596,12 @@ const Page = () => {
         isOpen={showFeedbackPopup} 
         onClose={() => setShowFeedbackPopup(false)} 
         sessionMessages={messages}
+        initialQuestion={{
+          title: originalQuestion.title,
+          description: originalQuestion.description,
+          community: originalQuestion.community,
+          anonymous: originalQuestion.anonymous,
+        }}
       />
     </div>
   );

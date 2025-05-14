@@ -699,6 +699,10 @@ input[type="search"], input[type="text"] {
   margin-top: -12px;
   margin-bottom: -12px;
 }
+.my-8 {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
 .-mb-0 {
   margin-bottom: -0px;
 }
@@ -1489,6 +1493,9 @@ input[type="search"], input[type="text"] {
 .border-t-0 {
   border-top-width: 0px;
 }
+.border-b-2 {
+  border-bottom-width: 2px;
+}
 .border-solid {
   border-style: solid;
 }
@@ -1530,6 +1537,9 @@ input[type="search"], input[type="text"] {
 .border-neutral-200 {
   --tw-border-opacity: 1;
   border-color: rgb(229 229 229 / var(--tw-border-opacity, 1));
+}
+.border-\[\#11244D\]\/70 {
+  border-color: rgb(17 36 77 / 0.7);
 }
 .border-b-black {
   --tw-border-opacity: 1;

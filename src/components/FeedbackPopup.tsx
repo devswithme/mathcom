@@ -3,18 +3,24 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Info } from 'lucide-react';
+import { db, auth } from '@/lib/firebase';
+import { addDoc, collection, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 interface FeedbackPopupProps {
   isOpen: boolean;
   onClose: () => void;
   sessionMessages?: { role: 'user' | 'assistant', content: string }[];
+  initialQuestion?: { title: string; description: string; community: string; anonymous: boolean };
 }
 
-const FeedbackPopup = ({ isOpen, onClose, sessionMessages }: FeedbackPopupProps) => {
+const FeedbackPopup = ({ isOpen, onClose, sessionMessages, initialQuestion }: FeedbackPopupProps) => {
   const [showInfo, setShowInfo] = useState(false);
   const [step, setStep] = useState<'initial' | 'yes' | 'no'>('initial');
   const [shareSummary, setShareSummary] = useState<boolean | null>(null);
   const [completed, setCompleted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   // Close modal on Escape
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -47,21 +53,83 @@ const FeedbackPopup = ({ isOpen, onClose, sessionMessages }: FeedbackPopupProps)
     setStep(satisfied ? 'yes' : 'no');
   };
 
-  const handleShareDecision = (share: boolean) => {
-    setShareSummary(share);
-    setCompleted(true);
-    // Here you would handle posting to community if share is true
-    setTimeout(() => {
-      onClose();
-    }, 1500);
+  const postToCommunity = async (summary?: string) => {
+    if (!initialQuestion) return;
+    setLoading(true);
+    try {
+      const user = auth.currentUser;
+      let userData = null;
+      if (user) {
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        userData = userDoc.data();
+      }
+      const postData: any = {
+        title: initialQuestion.title,
+        description: initialQuestion.description,
+        community: initialQuestion.community,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        upvotes: 0,
+        commentsCount: 0,
+        anonymous: initialQuestion.anonymous,
+      };
+      if (summary) postData.summary = summary;
+      if (!initialQuestion.anonymous && user) {
+        postData.userId = user.uid;
+        postData.userName = userData?.displayName || user.displayName || 'User';
+        postData.userPhotoURL = userData?.photoURL || user.photoURL || '/defaultprofile.png';
+      } else if (user) {
+        postData.userId = user.uid;
+        postData.userName = 'Anonymous User';
+        postData.userPhotoURL = '/defaultprofile.png';
+      }
+      const docRef = await addDoc(collection(db, 'posts'), postData);
+      setCompleted(true);
+      setTimeout(() => {
+        onClose();
+        router.push(`/post/${docRef.id}`);
+      }, 1200);
+    } catch (e) {
+      setCompleted(true);
+      setTimeout(() => {
+        onClose();
+        router.push('/');
+      }, 1200);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handlePostQuestion = () => {
-    // Logic to post question to community
-    setCompleted(true);
-    setTimeout(() => {
-      onClose();
-    }, 1500);
+  const handleShareDecision = async (share: boolean) => {
+    setShareSummary(share);
+    setCompleted(false);
+    if (share) {
+      setLoading(true);
+      // Call /summarize-chat endpoint
+      try {
+        const res = await fetch('http://localhost:5001/summarize-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ messages: sessionMessages }),
+        });
+        const data = await res.json();
+        const summary = data.summary || '';
+        console.log('Summary from /summarize-chat:', summary);
+        await postToCommunity(summary);
+      } catch (e) {
+        await postToCommunity(); // fallback: post without summary
+      }
+    } else {
+      setCompleted(true);
+      setTimeout(() => {
+        onClose();
+        router.push('/');
+      }, 1200);
+    }
+  };
+
+  const handlePostQuestion = async () => {
+    await postToCommunity();
   };
 
   if (!isOpen) return null;
@@ -69,13 +137,6 @@ const FeedbackPopup = ({ isOpen, onClose, sessionMessages }: FeedbackPopupProps)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 animate-fade-in">
       <div className="bg-white rounded-2xl shadow-lg max-w-xl w-full relative animate-scale-in mx-4">
-        <button 
-          onClick={onClose} 
-          className="absolute right-4 top-4 text-[#11244D]/70 hover:text-[#11244D] text-xl font-medium focus:outline-none"
-        >
-          ×
-        </button>
-
         <div className="w-full bg-neutral-100 rounded-2xl border border-neutral-200 flex flex-col items-start p-8 md:p-10">
           <h1 className="text-2xl md:text-3xl font-bold mb-[28px] text-[#11244D] text-left w-full">
             Satisfied with AI Response?
@@ -118,21 +179,30 @@ const FeedbackPopup = ({ isOpen, onClose, sessionMessages }: FeedbackPopupProps)
                 </div>
               </div>
               
-              <div className="flex gap-[16px] w-full">
-                <Button 
-                  onClick={() => handleShareDecision(true)}
-                  className="rounded-full py-1.5 px-8 text-base font-semibold bg-[#11244D]/70 hover:bg-[#11244D]/80 text-white"
-                >
-                  Yes
-                </Button>
-                <Button 
-                  onClick={() => handleShareDecision(false)}
-                  variant="outline" 
-                  className="rounded-full py-1.5 px-8 text-base font-semibold border border-[#11244D]/50 text-[#11244D] bg-white hover:bg-[#11244D]/10 hover:border-[#11244D] hover:text-[#11244D] transition-colors"
-                >
-                  No
-                </Button>
-              </div>
+              {loading ? (
+                <div className="flex items-center justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#11244D]/70 mr-3"></div>
+                  <span className="text-base font-medium text-[#11244D]/70">
+                    Summarizing your conversation...
+                  </span>
+                </div>
+              ) : (
+                <div className="flex gap-[16px] w-full">
+                  <Button 
+                    onClick={() => handleShareDecision(true)}
+                    className="rounded-full py-1.5 px-8 text-base font-semibold bg-[#11244D]/70 hover:bg-[#11244D]/80 text-white"
+                  >
+                    Yes
+                  </Button>
+                  <Button 
+                    onClick={() => handleShareDecision(false)}
+                    variant="outline" 
+                    className="rounded-full py-1.5 px-8 text-base font-semibold border border-[#11244D]/50 text-[#11244D] bg-white hover:bg-[#11244D]/10 hover:border-[#11244D] hover:text-[#11244D] transition-colors"
+                  >
+                    No
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 

@@ -100,6 +100,7 @@ interface Post {
 	createdAt: any;
 	upvotes: number;
 	commentsCount: number;
+	summary?: string;
 }
 
 // MentionComponent - makes @ mentions undeletable and styled differently
@@ -793,6 +794,42 @@ const Page = () => {
 											className='w-full h-full object-cover rounded-xl'
 										/>
 									</div>
+								)}
+								
+								{post.summary && (
+									<>
+										<hr className="my-8 border-t border-gray-200" />
+										<div className="mt-6 p-6 bg-neutral-50 border border-gray-200 rounded-xl shadow-sm">
+											<h2 className="font-semibold text-lg mb-4">AI Summary</h2>
+											<ReactMarkdown
+												remarkPlugins={[remarkMath]}
+												rehypePlugins={[rehypeKatex]}
+												components={{
+													p: ({ children }) => <p style={{ margin: '0 0 1em 0' }}>{children}</p>,
+													strong: ({ children }) => <strong style={{ fontWeight: 'bold' }}>{children}</strong>,
+													em: ({ children }) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
+													br: () => <br />,
+													code: ({ className, children }) => {
+														const match = /language-(\w+)/.exec(className || '');
+														return match ? (
+															<pre style={{ backgroundColor: '#f3f4f6', padding: '0.5em', borderRadius: '4px', overflow: 'auto' }}>
+																<code>{children}</code>
+															</pre>
+														) : (
+															<code style={{ backgroundColor: 'rgba(0,0,0,0.1)', padding: '0.2em 0.4em', borderRadius: '3px' }}>
+																{children}
+															</code>
+														);
+													},
+												}}
+											>
+												{post.summary}
+											</ReactMarkdown>
+											<div className="mt-4 text-xs text-gray-500 italic text-center">
+												This is an AI-generated summary. Please double-check for accuracy before relying on it.
+											</div>
+										</div>
+									</>
 								)}
 								
 								{/* Interaction buttons */}
