@@ -17,6 +17,7 @@ interface PostCardProps {
     imageURL?: string;
     upvotes: number;
     commentsCount: number;
+    avatar?: string;
   };
   index: number;
   isVoted: boolean;
@@ -31,6 +32,9 @@ interface PostCardProps {
   onReport: (postId: string) => void;
   descRef: (el: HTMLDivElement | null) => void;
   getPreviewHtml: (html: string) => string;
+  mode?: "community" | "user";
+  userInfo?: { displayName: string };
+  postLink?: string;
 }
 
 /**
@@ -54,6 +58,9 @@ interface PostCardProps {
  * - onReport: Callback for handling post reporting.
  * - descRef: A ref callback for the description container.
  * - getPreviewHtml: Function to generate a preview of the description HTML.
+ * - mode: Indicates whether the post is from a community or user.
+ * - userInfo: Optional user information for the community or user.
+ * - postLink: Optional custom link for the post.
  */
 export default function PostCard({
   post,
@@ -70,27 +77,31 @@ export default function PostCard({
   onReport,
   descRef,
   getPreviewHtml,
+  mode = "community",
+  userInfo,
+  postLink,
 }: PostCardProps) {
   return (
     <div className="border-b border-black/20 last:border-b-0 group">
       <Link
-        href={`/post/${post.id}`}
+        href={postLink || `/post/${post.id}`}
         className={`block px-4 py-4 space-y-3 relative ${
           index === 0 ? "pt-5" : ""
         }`}
       >
-        <div className="absolute inset-x-0 top-2 bottom-2 bg-neutral-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none" />
+        <div className="absolute inset-0 bg-neutral-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none" />
 
         <div className="relative z-10">
           <PostHeader
             community={post.community}
-            username={post.username}
+            username={userInfo?.displayName || post.username}
             postUserId={post.userId}
             currentUser={currentUser}
             createdAt={post.createdAt}
             onDelete={() => onDelete(post.id)}
             onReport={() => onReport(post.id)}
-            mode="community"
+            mode={mode}
+            postAvatar={post.avatar}
           />
 
           <PostBody

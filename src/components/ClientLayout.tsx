@@ -19,7 +19,7 @@ const shortcutsValue = {
 };
 
 function ClientLayoutInner({ children }: { children: React.ReactNode }) {
-  const { isNavbarOpen, toggleNavbar, closeNavbar } = useNavbar();
+  const { isNavbarOpen, closeNavbar } = useNavbar();
   const pathname = usePathname();
   const { handlers } = useChatShortcutsHandlersBridge();
   
@@ -65,7 +65,7 @@ function ClientLayoutInner({ children }: { children: React.ReactNode }) {
           )}
           
           {/* Main content - with standardized padding */}
-          <main className="w-full transition-all duration-300 ease-in-out pt-[40px] pb-4 md:ml-64">
+          <main className="w-full transition-all duration-300 ease-in-out pt-[64px] pb-4 md:ml-64">
             {children}
           </main>
         </div>

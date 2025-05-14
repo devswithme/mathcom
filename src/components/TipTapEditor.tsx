@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useCallback, useState, useEffect, useRef } from 'react'; // Removed useRef, Dispatch, SetStateAction
-import { EditorContent, useEditor, Editor } from '@tiptap/react'; // Added Editor type
+import React, { useCallback, useState, useEffect } from 'react';
+import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -15,16 +15,13 @@ import {
   List as IconList,
   ListOrdered as IconListOrdered,
   Sigma as IconSigma,
-  X,
 } from 'lucide-react';
-
-import Image from '@tiptap/extension-image';
-import { Image as IconImage } from 'lucide-react';
 import { renderMathInNode } from '@/utils/mathlive';
 
 declare global {
   interface Window {
     mathLiveReadyState?: 'loading' | 'ready' | 'failed';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     MathLive?: any;
   }
 }
@@ -79,9 +76,9 @@ const MathNode = Node.create({
       setTimeout(attemptRender, 50);
 
       dom.addEventListener('dblclick', () => {
-        const editorOptions = currentEditor.options as any;
+        const editorOptions = (currentEditor.options as unknown) as Record<string, unknown>;
         if (typeof editorOptions.onEditMath === 'function') {
-          editorOptions.onEditMath(node.attrs.latex, getPos as Function);
+          (editorOptions.onEditMath as (latex: string, pos: (() => number)) => void)(node.attrs.latex, getPos as (() => number));
         }
       });
       return { dom, destroy: () => {} };
@@ -91,7 +88,7 @@ const MathNode = Node.create({
 
 // Removed CustomParagraph extension and import
 
-export type TipTapEditorProps = { // Exporting the type
+export type TipTapEditorProps = {
   value?: string;
   onChange?: (val: string) => void;
   placeholder?: string;
@@ -101,31 +98,14 @@ export type TipTapEditorProps = { // Exporting the type
 const TipTapEditor: React.FC<TipTapEditorProps> = ({  
   value = '',  
   onChange,  
-  placeholder = 'Enter description here.', // Changed default placeholder
-  className = ''  
+  placeholder = 'Enter description here.',
+  className = '',
 }) => {
   const [mathDialogOpen, setMathDialogOpen] = useState(false);
   const [mathExpression, setMathExpression] = useState('');
   const [editMathPos, setEditMathPos] = useState<number | null>(null);
   
   const [mathLiveReady, setMathLiveReady] = useState<boolean>(() => isMathLiveReady());
-
-  const imageInputRef = useRef<HTMLInputElement>(null);
-
-  const triggerImageSelect = () => imageInputRef.current?.click();
-
-  const [imageThumbnails, setImageThumbnails] = useState<string[]>([]);
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !editor) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const src = reader.result as string;
-      setImageThumbnails((prev) => [...prev, src]);
-    };
-    reader.readAsDataURL(file);
-  };
 
   // React to global MathLive events
   useEffect(() => {
@@ -141,8 +121,6 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
       window.removeEventListener("mathlive-failed", failHandler);
     };
   }, []);
-
-  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   const editor = useEditor({
     extensions: [
@@ -268,20 +246,6 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
     setMathDialogOpen(false); setMathExpression(''); setEditMathPos(null);
   }, [editor, mathExpression, editMathPos]);
 
-  const handleRemoveImage = (idx: number) => {
-    setImageThumbnails((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  // Add Escape key handler for closing the image modal
-  useEffect(() => {
-    if (!enlargedImage) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setEnlargedImage(null);
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [enlargedImage]);
-
   if (!editor || !mathLiveReady) {
     return <div className="p-4 text-center text-gray-400">Loading math editor… (Editor: {editor ? 'Yes' : 'No'}, MathLive: {mathLiveReady ? 'Yes' : 'No'})</div>;
   }
@@ -340,25 +304,6 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
           <IconListOrdered className="w-4 h-4" />
         </button>
 
-        {/* INSERT IMAGE */}
-        <button
-          type="button"
-          onClick={triggerImageSelect}
-          title="Insert Image"
-          className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100"
-        >
-          <IconImage className="w-4 h-4" />
-        </button>
-
-        {/* hidden file input */}
-        <input
-          type="file"
-          accept="image/*"
-          ref={imageInputRef}
-          onChange={handleImageChange}
-          className="hidden"
-        />
-
         <span className="w-px h-5 bg-gray-300 mx-1"></span>
         <button
           type="button"
@@ -370,40 +315,6 @@ const TipTapEditor: React.FC<TipTapEditorProps> = ({
         </button>
       </div>
       <EditorContent editor={editor} />
-      {imageThumbnails.length > 0 && (
-        <div className="flex gap-2 mt-4">
-          {imageThumbnails.map((src, idx) => (
-            <div key={idx} className="relative w-20 h-20 group">
-              <img
-                src={src}
-                alt={`Uploaded ${idx}`}
-                className="w-20 h-20 object-cover rounded-lg border border-gray-300 cursor-pointer"
-                onClick={() => setEnlargedImage(src)}
-              />
-              <button
-                type="button"
-                className="absolute top-1 right-1 bg-white bg-opacity-80 rounded-full p-1 shadow group-hover:opacity-100 opacity-80 transition"
-                onClick={(e) => { e.stopPropagation(); handleRemoveImage(idx); }}
-              >
-                <X className="w-4 h-4 text-gray-600" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-      {enlargedImage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70" onClick={() => setEnlargedImage(null)}>
-          <button
-            type="button"
-            className="absolute top-6 right-6 bg-white bg-opacity-80 rounded-full p-2 shadow-lg hover:bg-opacity-100 transition z-60"
-            onClick={e => { e.stopPropagation(); setEnlargedImage(null); }}
-            aria-label="Close image preview"
-          >
-            <X className="w-6 h-6 text-gray-700" />
-          </button>
-          <img src={enlargedImage} alt="Enlarged" className="max-w-full max-h-full rounded-lg shadow-lg" />
-        </div>
-      )}
       <Dialog open={mathDialogOpen} onOpenChange={setMathDialogOpen}>
         <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
           <DialogTitle>{editMathPos !== null ? 'Edit Math Expression' : 'Insert Math Expression'}</DialogTitle>

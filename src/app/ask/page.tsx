@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { ChevronDown, ImagePlus, Info, Loader2, Trash } from 'lucide-react';
-import { db, auth, storage } from '@/lib/firebase';
+import { ChevronDown, Info, Loader2 } from 'lucide-react';
+import { db, auth } from '@/lib/firebase';
 import {
   addDoc,
   collection,
@@ -13,9 +12,7 @@ import {
   doc,
   getDoc,
 } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { v4 as uuid } from 'uuid';
 import Image from 'next/image';
 import {
   DropdownMenu,
@@ -32,7 +29,6 @@ import {
   AlertDialogFooter,
   AlertDialogCancel,
 } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -42,7 +38,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import LatexEditor from '@/components/LatexEditor';
 import TipTapEditor from '@/components/TipTapEditor';
 
 const communityOptions = [
@@ -107,7 +102,6 @@ export default function AskPage() {
   const [showLoginAlert, setShowLoginAlert] = useState(false);
   const [postAnonymously, setPostAnonymously] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [mathLiveReady, setMathLiveReady] = useState(
     typeof window !== 'undefined' && !!window.MathLive && !!customElements.get('math-field')
   );
@@ -120,7 +114,6 @@ export default function AskPage() {
         // Redirect to login if user is not authenticated
         router.push('/login');
       }
-      setLoading(false);
     });
     return () => unsubscribe();
   }, [router]);
@@ -219,7 +212,7 @@ useEffect(() => {
       const userData = userDoc.data();
       
       // Prepare post data
-      const postData: any = {
+      const postData: Record<string, unknown> = {
         title,
         description: tiptapHtmlToTextWithMath(description),
         community: selectedCommunity,
@@ -231,20 +224,17 @@ useEffect(() => {
       };
 
       // Only include user data if not anonymous
+      postData.userId = user.uid;
       if (!postAnonymously) {
-        postData.userId = user.uid;
-        postData.userName = userData?.displayName || user.displayName || 'User';
-        postData.userPhotoURL = userData?.photoURL || user.photoURL || '/defaultprofile.png';
+        postData.username = userData?.displayName || user.displayName || 'User';
+        postData.avatar = userData?.photoURL || user.photoURL || '/defaultprofile.png';
       } else {
-        postData.userId = user.uid; // Still store the real user ID for moderation purposes
-        postData.userName = 'Anonymous User';
-        postData.userPhotoURL = '/defaultprofile.png';
+        postData.username = 'Anonymous User';
+        postData.avatar = '/defaultprofile.png';
       }
 
-      // Image upload functionality removed
-
       // Add post to Firestore
-      const docRef = await addDoc(collection(db, 'posts'), postData);
+      await addDoc(collection(db, 'posts'), postData);
       
       // Success notification
       toast(

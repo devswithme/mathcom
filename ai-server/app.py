@@ -17,9 +17,11 @@ CORS(app, resources={
     r"/summarize-chat": {"origins": ["http://localhost:3000", "http://localhost:3007", "http://localhost:3008"]},
 })
 
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 @app.route('/ask', methods=['POST'])
 def ask():

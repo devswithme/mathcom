@@ -231,7 +231,10 @@ const FeedbackPopup = ({ isOpen, onClose, sessionMessages, initialQuestion }: Fe
                   Post my question
                 </Button>
                 <Button 
-                  onClick={onClose}
+                  onClick={() => {
+                    onClose();
+                    router.push('/');
+                  }}
                   variant="outline" 
                   className="rounded-full py-1.5 px-8 text-base font-semibold border border-[#11244D]/50 text-[#11244D] bg-white hover:bg-[#11244D]/10 hover:border-[#11244D] hover:text-[#11244D] transition-colors"
                 >
@@ -268,7 +271,7 @@ const FeedbackPopup = ({ isOpen, onClose, sessionMessages, initialQuestion }: Fe
             </div>
             <div className="text-[#11244D]/80 text-base">
               {step === 'yes' 
-                ? "If you're satisfied, MathCom AI can summarize this chat and post it to the community feed. You'll have the option to stay anonymous."
+                ? "If you're satisfied, MathCom AI can summarize this chat and post it to the community feed."
                 : "Still need help? You can post your question in the community forum to get answers from others or tutors."
               }
             </div>

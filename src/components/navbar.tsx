@@ -264,11 +264,6 @@ const Navbar = ({ className }: { className?: string }) => {
 							<h2 className="font-semibold text-sm mb-2 px-1">Shortcuts</h2>
 							<div className="space-y-3">
 								<div className="bg-neutral-100 flex items-center gap-x-3 py-2 px-3 rounded-full hover:bg-neutral-200 transition-colors cursor-pointer text-sm w-full pl-4 justify-start"
-									onClick={shortcuts.handleSimilarQs}>
-									<span className="" style={{ fontSize: '1.3rem', minWidth: '2.2rem', textAlign: 'center', verticalAlign: 'middle' }}>❓</span>
-									<h3 className="font-medium text-sm w-full text-left">Similar Qs</h3>
-								</div>
-								<div className="bg-neutral-100 flex items-center gap-x-3 py-2 px-3 rounded-full hover:bg-neutral-200 transition-colors cursor-pointer text-sm w-full pl-4 justify-start"
 									onClick={shortcuts.handleAskTutor}>
 									<span className="" style={{ fontSize: '1.2rem', minWidth: '2.2rem', textAlign: 'center', verticalAlign: 'middle' }}>🧑‍🏫</span>
 									<h3 className="font-medium text-sm w-full text-left">Ask Tutor</h3>

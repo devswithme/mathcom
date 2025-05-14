@@ -17,11 +17,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/ask/page.js"
     ],
-    "/post/[id]/page": [
+    "/chat/page": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
-      "static/css/app/post/[id]/page.css",
-      "static/chunks/app/post/[id]/page.js"
+      "static/chunks/app/chat/page.js"
     ]
   }
 }

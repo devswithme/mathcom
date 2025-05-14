@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import { useEffect, useRef, useImperativeHandle, forwardRef, useCallback } from 'react';
 
 const Chat = forwardRef(({
   externalMessage,
@@ -14,6 +14,7 @@ const Chat = forwardRef(({
   const streamingContentRef = useRef('');
   const abortControllerRef = useRef<AbortController | null>(null);
   const userInitiatedAbortRef = useRef(false);
+  const lastSentMessageRef = useRef('');
 
   const stopStreaming = () => {
     userInitiatedAbortRef.current = true;
@@ -28,11 +29,9 @@ const Chat = forwardRef(({
     }
   }, [onStopStreaming]);
 
-  const sendMessage = async (newMessage: string) => {
+  const sendMessage = useCallback(async (newMessage: string) => {
     if (!newMessage.trim() || !onMessageRender) return;
 
-    // Immediately show user message once
-    onMessageRender({ role: 'user', content: newMessage });
 
     try {
       userInitiatedAbortRef.current = false;
@@ -69,15 +68,8 @@ const Chat = forwardRef(({
         }
       }
 
-      // Final assistant message (if any remaining content)
-      if (streamingContentRef.current !== lastRendered) {
-        onMessageRender({
-          role: 'assistant',
-          content: streamingContentRef.current
-        });
-      }
-    } catch (error) {
-      if ((error as any).name === 'AbortError') {
+    } catch (error: unknown) {
+      if ((error as DOMException)?.name === 'AbortError') {
         if (userInitiatedAbortRef.current) {
           onMessageRender?.({ role: 'assistant', content: '[Stopped by user]' });
         }
@@ -86,15 +78,18 @@ const Chat = forwardRef(({
         onMessageRender?.({ role: 'assistant', content: 'Error reaching server.' });
       }
     }
-  };
+  }, [messageHistory, onMessageRender]);
 
   useEffect(() => {
-    if (externalMessage?.trim()) {
+    if (
+      externalMessage?.trim() &&
+      externalMessage !== lastSentMessageRef.current
+    ) {
+      lastSentMessageRef.current = externalMessage;
       streamingContentRef.current = ''; // reset stream buffer
       sendMessage(externalMessage);
     }
-    // No abort on prop change
-  }, [externalMessage]);
+  }, [externalMessage, sendMessage]);
 
   // Only abort on unmount
   useEffect(() => {
@@ -105,5 +100,7 @@ const Chat = forwardRef(({
 
   return null;
 });
+
+Chat.displayName = "Chat";
 
 export default Chat;

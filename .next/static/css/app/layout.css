@@ -600,23 +600,14 @@ input[type="search"], input[type="text"] {
 .right-0 {
   right: 0px;
 }
-.right-1 {
-  right: 0.25rem;
-}
 .right-3 {
   right: 0.75rem;
 }
 .right-4 {
   right: 1rem;
 }
-.right-6 {
-  right: 1.5rem;
-}
 .top-0 {
   top: 0px;
-}
-.top-1 {
-  top: 0.25rem;
 }
 .top-1\/2 {
   top: 50%;
@@ -630,9 +621,6 @@ input[type="search"], input[type="text"] {
 .top-4 {
   top: 1rem;
 }
-.top-6 {
-  top: 1.5rem;
-}
 .top-\[50\%\] {
   top: 50%;
 }
@@ -641,9 +629,6 @@ input[type="search"], input[type="text"] {
 }
 .z-10 {
   z-index: 10;
-}
-.z-20 {
-  z-index: 20;
 }
 .z-30 {
   z-index: 30;
@@ -662,10 +647,6 @@ input[type="search"], input[type="text"] {
 }
 .col-start-2 {
   grid-column-start: 2;
-}
-.mx-0\.5 {
-  margin-left: 0.125rem;
-  margin-right: 0.125rem;
 }
 .mx-1 {
   margin-left: 0.25rem;
@@ -695,9 +676,9 @@ input[type="search"], input[type="text"] {
   margin-top: 1.25rem;
   margin-bottom: 1.25rem;
 }
-.my-8 {
-  margin-top: 2rem;
-  margin-bottom: 2rem;
+.my-6 {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
 }
 .my-\[-12px\] {
   margin-top: -12px;
@@ -817,9 +798,6 @@ input[type="search"], input[type="text"] {
 .mt-auto {
   margin-top: auto;
 }
-.mt-10 {
-  margin-top: 2.5rem;
-}
 .line-clamp-1 {
   overflow: hidden;
   display: -webkit-box;
@@ -864,10 +842,6 @@ input[type="search"], input[type="text"] {
 .size-4 {
   width: 1rem;
   height: 1rem;
-}
-.size-5 {
-  width: 1.25rem;
-  height: 1.25rem;
 }
 .size-8 {
   width: 2rem;
@@ -1490,6 +1464,9 @@ input[type="search"], input[type="text"] {
 .border-l-2 {
   border-left-width: 2px;
 }
+.border-l-4 {
+  border-left-width: 4px;
+}
 .border-r {
   border-right-width: 1px;
 }
@@ -1524,6 +1501,10 @@ input[type="search"], input[type="text"] {
 .border-black\/20 {
   border-color: rgb(0 0 0 / 0.2);
 }
+.border-blue-400 {
+  --tw-border-opacity: 1;
+  border-color: rgb(96 165 250 / var(--tw-border-opacity, 1));
+}
 .border-gray-100 {
   --tw-border-opacity: 1;
   border-color: rgb(243 244 246 / var(--tw-border-opacity, 1));
@@ -1553,10 +1534,6 @@ input[type="search"], input[type="text"] {
 }
 .border-opacity-50 {
   --tw-border-opacity: 0.5;
-}
-.\!bg-white {
-  --tw-bg-opacity: 1 !important;
-  background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1)) !important;
 }
 .bg-\[\#11244DB2\] {
   background-color: #11244DB2;
@@ -1597,10 +1574,6 @@ input[type="search"], input[type="text"] {
 }
 .bg-background {
   background-color: var(--background);
-}
-.bg-black {
-  --tw-bg-opacity: 1;
-  background-color: rgb(0 0 0 / var(--tw-bg-opacity, 1));
 }
 .bg-black\/20 {
   background-color: rgb(0 0 0 / 0.2);
@@ -1691,12 +1664,6 @@ input[type="search"], input[type="text"] {
 }
 .bg-white\/80 {
   background-color: rgb(255 255 255 / 0.8);
-}
-.bg-opacity-70 {
-  --tw-bg-opacity: 0.7;
-}
-.bg-opacity-80 {
-  --tw-bg-opacity: 0.8;
 }
 .fill-blue-600 {
   fill: #2563eb;
@@ -1910,11 +1877,17 @@ input[type="search"], input[type="text"] {
 .pr-6 {
   padding-right: 1.5rem;
 }
+.pt-0 {
+  padding-top: 0px;
+}
 .pt-16 {
   padding-top: 4rem;
 }
 .pt-2 {
   padding-top: 0.5rem;
+}
+.pt-20 {
+  padding-top: 5rem;
 }
 .pt-3 {
   padding-top: 0.75rem;
@@ -1934,17 +1907,8 @@ input[type="search"], input[type="text"] {
 .pt-\[20vh\] {
   padding-top: 20vh;
 }
-.pt-\[40px\] {
-  padding-top: 40px;
-}
-.pt-\[72px\] {
-  padding-top: 72px;
-}
-.pt-20 {
-  padding-top: 5rem;
-}
-.pt-0 {
-  padding-top: 0px;
+.pt-\[64px\] {
+  padding-top: 64px;
 }
 .text-left {
   text-align: left;
@@ -2096,6 +2060,10 @@ input[type="search"], input[type="text"] {
   --tw-text-opacity: 1;
   color: rgb(163 163 163 / var(--tw-text-opacity, 1));
 }
+.text-neutral-500 {
+  --tw-text-opacity: 1;
+  color: rgb(115 115 115 / var(--tw-text-opacity, 1));
+}
 .text-neutral-700 {
   --tw-text-opacity: 1;
   color: rgb(64 64 64 / var(--tw-text-opacity, 1));
@@ -2125,10 +2093,6 @@ input[type="search"], input[type="text"] {
   --tw-text-opacity: 1;
   color: rgb(255 255 255 / var(--tw-text-opacity, 1));
 }
-.text-yellow-600 {
-  --tw-text-opacity: 1;
-  color: rgb(202 138 4 / var(--tw-text-opacity, 1));
-}
 .underline {
   text-decoration-line: underline;
 }
@@ -2141,9 +2105,6 @@ input[type="search"], input[type="text"] {
 }
 .opacity-0 {
   opacity: 0;
-}
-.opacity-50 {
-  opacity: 0.5;
 }
 .opacity-60 {
   opacity: 0.6;
@@ -2581,6 +2542,51 @@ hr.dropdown-separator {
 .ML__keyboard {
   z-index: 2147483647 !important;
 }
+
+/* Remove all .ai-summary-box rules for summary formatting */
+.ai-summary-box h1,
+.ai-summary-box h2,
+.ai-summary-box h3 {
+  font-weight: 700;
+  color: #26324a;
+}
+.ai-summary-box h1 {
+  font-size: 1.25rem;
+  margin: 1.5em 0 0.5em 0;
+}
+.ai-summary-box h2 {
+  font-size: 1.1rem;
+  margin: 1.3em 0 0.4em 0;
+}
+.ai-summary-box h3 {
+  font-size: 1rem;
+  margin: 1.1em 0 0.3em 0;
+}
+/* Remove extra top margin for the first heading in the box */
+.ai-summary-box h1:first-child,
+.ai-summary-box h2:first-child,
+.ai-summary-box h3:first-child {
+  margin-top: 0.5em;
+}
+
+/* More space below each step heading */
+.ai-summary-box strong {
+  display: block;
+  margin-top: 1em;
+  margin-bottom: 0.4em;
+}
+
+/* More space between step blocks and lighter explanation text */
+.ai-summary-box p {
+  margin-bottom: 1em;
+  font-weight: 400;
+  color: #333a4d;
+}
+
+/* But don't add extra margin to the first step */
+.ai-summary-box strong:first-child {
+  margin-top: 0;
+}
 .selection\:bg-primary *::-moz-selection {
   background-color: var(--primary);
 }
@@ -2689,14 +2695,8 @@ hr.dropdown-separator {
   --tw-bg-opacity: 1;
   background-color: rgb(243 244 246 / var(--tw-bg-opacity, 1));
 }
-.hover\:bg-gray-100\/10:hover {
-  background-color: rgb(243 244 246 / 0.1);
-}
 .hover\:bg-gray-100\/30:hover {
   background-color: rgb(243 244 246 / 0.3);
-}
-.hover\:bg-gray-100\/60:hover {
-  background-color: rgb(243 244 246 / 0.6);
 }
 .hover\:bg-gray-200:hover {
   --tw-bg-opacity: 1;
@@ -2709,6 +2709,10 @@ hr.dropdown-separator {
 .hover\:bg-gray-50:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(249 250 251 / var(--tw-bg-opacity, 1));
+}
+.hover\:bg-neutral-100:hover {
+  --tw-bg-opacity: 1;
+  background-color: rgb(245 245 245 / var(--tw-bg-opacity, 1));
 }
 .hover\:bg-neutral-200:hover {
   --tw-bg-opacity: 1;
@@ -2733,9 +2737,6 @@ hr.dropdown-separator {
 .hover\:bg-white:hover {
   --tw-bg-opacity: 1;
   background-color: rgb(255 255 255 / var(--tw-bg-opacity, 1));
-}
-.hover\:bg-opacity-100:hover {
-  --tw-bg-opacity: 1;
 }
 .hover\:text-\[\#11244DB2\]:hover {
   color: #11244DB2;
@@ -2780,8 +2781,9 @@ hr.dropdown-separator {
 .hover\:ring-\[\#11244DB2\]:hover {
   --tw-ring-color: #11244DB2;
 }
-.focus\:bg-transparent:focus {
-  background-color: transparent;
+.focus\:text-red-500:focus {
+  --tw-text-opacity: 1;
+  color: rgb(239 68 68 / var(--tw-text-opacity, 1));
 }
 .focus\:outline-none:focus {
   outline: 2px solid transparent;
@@ -3086,10 +3088,6 @@ hr.dropdown-separator {
 .\[\&_svg\:not\(\[class\*\=\'size-\'\]\)\]\:size-4 svg:not([class*='size-']) {
   width: 1rem;
   height: 1rem;
-}
-.\[\&_svg\:not\(\[class\*\=\'size-\'\]\)\]\:size-5 svg:not([class*='size-']) {
-  width: 1.25rem;
-  height: 1.25rem;
 }
 .\[\&_svg\]\:pointer-events-none svg {
   pointer-events: none;

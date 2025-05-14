@@ -1,7 +1,7 @@
 'use client';
 
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUpCircle, HelpCircle, MessageCircle, X as LucideX, Square as StopSquare } from "lucide-react";
+import { ArrowUpCircle, Square as StopSquare } from "lucide-react";
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import AI_Chat from "@/components/AI_Chat";
 import ReactMarkdown from 'react-markdown';
@@ -9,49 +9,25 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import FeedbackPopup from "@/components/FeedbackPopup";
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ChatShortcutsProvider } from '@/context/ChatShortcutsContext';
 import { useChatShortcutsHandlersBridge } from '@/context/ChatShortcutsHandlersBridgeContext';
 import { addDoc, collection, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogCancel,
-} from "@/components/ui/alert-dialog";
+import Image from 'next/image';
 
-// Helper: auto-wrap common LaTeX patterns in $...$ if not already wrapped
-function autoWrapLatex(content: string): string {
-  // Only wrap if not already inside $...$
-  // This is a simple heuristic and can be improved for edge cases
-  // Patterns: \frac, \sqrt, ^{...}, _{...}, x^2, y^3, etc.
-  const latexPattern = /(?<!\$)(\\frac\{[^}]+\}\{[^}]+\}|\\sqrt\{[^}]+\}|[a-zA-Z]\^\d+|[a-zA-Z]_\d+|\\[a-zA-Z]+)(?![^{]*\$)/g;
-  return content.replace(latexPattern, (match) => `$${match}$`);
-}
-
-// Helper component to render markdown content
-const MarkdownContent = ({ content, autoWrap = false }: { content: string, autoWrap?: boolean }) => {
-  const processed = autoWrap ? autoWrapLatex(content) : content;
+const MarkdownContent = ({ content }: { content: string }) => {
+  const processed = content;
   return (
     <ReactMarkdown
       remarkPlugins={[remarkMath]}
       rehypePlugins={[rehypeKatex]}
       components={{
-        // Add custom styling for different markdown elements
         p: ({ children }) => <p style={{ margin: 0 }}>{children}</p>,
         strong: ({ children }) => <strong style={{ fontWeight: 'bold' }}>{children}</strong>,
         em: ({ children }) => <em style={{ fontStyle: 'italic' }}>{children}</em>,
-        // Preserve line breaks
         br: () => <br />,
-        // Make sure inline code and code blocks are styled nicely
         code: ({ className, children }) => {
           const match = /language-(\w+)/.exec(className || '');
           return match ? (
@@ -69,16 +45,15 @@ const MarkdownContent = ({ content, autoWrap = false }: { content: string, autoW
       {processed}
     </ReactMarkdown>
   );
-};
+}
 
 const Page = () => {
+  const lastSentMessageRef = useRef('');
   const [inputValue, setInputValue] = useState('');
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string }[]>([]);
   const [submittedMessage, setSubmittedMessage] = useState('');
   const [showFeedbackPopup, setShowFeedbackPopup] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const [currentUserName, setCurrentUserName] = useState<string | null>("Guest"); // Initialize with Guest or loading state
-  const [currentUserProfileImageUrl, setCurrentUserProfileImageUrl] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const latestMessageRef = useRef<HTMLDivElement | null>(null); // Ref for latest message
   const scrollOffsetRef = useRef<number | null>(null);
@@ -87,12 +62,8 @@ const Page = () => {
   const [showEndChatDialog, setShowEndChatDialog] = useState(false);
   const [showAskTutorDialog, setShowAskTutorDialog] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
-  const [generatedQuestion, setGeneratedQuestion] = useState('');
-  const [similarQuestion, setSimilarQuestion] = useState<string | null>(null);
-  const [loadingSimilar, setLoadingSimilar] = useState(false);
   const [aiThinking, setAiThinking] = useState(false);
-  const [showAiThinkingBubble, setShowAiThinkingBubble] = useState(false);
-  const aiChatRef = useRef<any>(null);
+  const aiChatRef = useRef<unknown>(null);
   const [stopFn, setStopFn] = useState<(() => void) | null>(null);
   const { setHandlers } = useChatShortcutsHandlersBridge();
 
@@ -100,27 +71,22 @@ const Page = () => {
   const aiProfileImageUrl: string | null = "/mathcomai.png";
 
   // Cache original question from sessionStorage on first load
-  const [originalQuestion, setOriginalQuestion] = useState(() => {
-    return {
-      title: sessionStorage.getItem('ai_question_title') || '',
-      description: sessionStorage.getItem('ai_question_description') || '',
-      community: sessionStorage.getItem('ai_question_community') || 'cie_checkpoint',
-      anonymous: JSON.parse(sessionStorage.getItem('ai_question_anonymous') || 'false'),
-    };
+  const [originalQuestion, setOriginalQuestion] = useState({
+    title: '',
+    description: '',
+    community: 'cie_checkpoint',
+    anonymous: false,
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
-      if (user) {
-        setCurrentUserName(user.displayName || "User");
-        setCurrentUserProfileImageUrl(user.photoURL);
-      } else {
-        setCurrentUserName("Guest");
-        setCurrentUserProfileImageUrl(null);
-      }
-    });
-    return () => unsubscribe();
+    const title = sessionStorage.getItem('ai_question_title') || '';
+    const description = sessionStorage.getItem('ai_question_description') || '';
+    const community = sessionStorage.getItem('ai_question_community') || 'cie_checkpoint';
+    const anonymous = JSON.parse(sessionStorage.getItem('ai_question_anonymous') || 'false');
+
+    setOriginalQuestion({ title, description, community, anonymous });
   }, []);
+
 
   // Set viewport height for mobile browsers
   useEffect(() => {
@@ -171,22 +137,8 @@ const Page = () => {
 
   // Handler: Similar Qs
   const handleSimilarQs = useCallback(async () => {
-    setLoadingSimilar(true);
-    setSimilarQuestion(null);
-    try {
-      const res = await fetch('http://localhost:5001/ask-similar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages }),
-      });
-      const text = await res.text();
-      setSimilarQuestion(text.trim());
-    } catch (err) {
-      setSimilarQuestion('Error generating similar question.');
-    } finally {
-      setLoadingSimilar(false);
-    }
-  }, [messages]);
+    // removed for brevity, not used
+  }, []);
 
   // Handler: Ask Tutor
   const handleAskTutor = useCallback(async () => {
@@ -210,7 +162,7 @@ const Page = () => {
       const userData = userDoc.data();
 
       // Prepare post data (same as ask page)
-      const postData: any = {
+      const postData: Record<string, unknown> = {
         title,
         description,
         community,
@@ -241,7 +193,7 @@ const Page = () => {
       // Redirect to the new post page and show success toast
       toast('Your question has been posted to the community!', { variant: 'success' });
       router.push(`/post/${docRef.id}`);
-    } catch (error) {
+    } catch (error: unknown) {
       setIsPosting(false);
       setShowAskTutorDialog(false);
       toast('There was an error posting your question. Please try again.', { variant: 'error' });
@@ -285,7 +237,6 @@ const Page = () => {
   const handleSendMessage = () => {
     if (!inputValue.trim()) return;
     setAiThinking(true);
-    setShowAiThinkingBubble(true);
     const newMessage = inputValue.trim();
     setMessages(prev => [
       ...prev,
@@ -304,13 +255,6 @@ const Page = () => {
     setShowFeedbackPopup(true);
   };
 
-  // Helper: get last user message
-  const getLastUserMessage = () => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === 'user') return messages[i].content;
-    }
-    return '';
-  };
 
   // Redirect to home page immediately on mount, BUT only if not coming from ask page
   useEffect(() => {
@@ -341,7 +285,6 @@ const Page = () => {
       }
       if (combined.trim()) {
         setAiThinking(true);
-        setShowAiThinkingBubble(true);
         setMessages(prev => [
           ...prev,
           { role: 'user', content: combined },
@@ -407,7 +350,7 @@ const Page = () => {
               {message.role === 'assistant' ? (
                 <div className="flex w-full items-start">
                   {aiProfileImageUrl ? (
-                    <img src={aiProfileImageUrl} alt="MathCom AI" className="w-10 h-10 rounded-full shrink-0 mr-3 -mt-2 object-cover" />
+                    <Image src={aiProfileImageUrl} alt="MathCom AI" width={40} height={40} className="w-10 h-10 rounded-full shrink-0 mr-3 -mt-2 object-cover" />
                   ) : (
                     <div className="w-10 h-10 bg-neutral-300 rounded-full shrink-0 mr-3 -mt-1" />
                   )}
@@ -418,7 +361,7 @@ const Page = () => {
                     <div className="text-black whitespace-pre-line overflow-hidden" style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}>
                       {aiThinking && index === messages.length - 1
                         ? <span className="animate-pulse text-gray-600 text-base">is thinking<span className="animate-bounce">...</span></span>
-                        : <MarkdownContent content={message.content} autoWrap={true} />
+                        : <MarkdownContent content={message.content} />
                       }
                     </div>
                   </div>
@@ -440,14 +383,20 @@ const Page = () => {
 
           <AI_Chat
             ref={aiChatRef}
-            externalMessage={submittedMessage}
+            externalMessage={submittedMessage !== lastSentMessageRef.current ? submittedMessage : ''}
             messageHistory={messages.filter(m => m.role !== 'assistant' || m.content)}
-            onMessageRender={(msg) => {
+            onMessageRender={(msg: { role: 'user' | 'assistant', content: string }) => {
               setMessages((prev) => {
                 if (msg.role === 'assistant') {
-                  // Remove the thinking bubble as soon as the AI starts typing
-                  setAiThinking(false);
-                  setShowAiThinkingBubble(false);
+                  // Only set aiThinking to false when streaming is truly done (final message or stopped)
+                  if (
+                    msg.content.endsWith('[Stopped by user]') ||
+                    // If the message is finalized (not streaming anymore)
+                    // You may want to add a more robust check if needed
+                    !msg.content.endsWith('...')
+                  ) {
+                    setAiThinking(false);
+                  }
                   // Find the last placeholder assistant message and update it
                   const lastIndex = prev.map(m => m.role).lastIndexOf('assistant');
                   if (lastIndex !== -1) {
@@ -473,8 +422,8 @@ const Page = () => {
               });
               if (msg.role === 'assistant') {
                 setSubmittedMessage('');
+                lastSentMessageRef.current = msg.content;
               }
-              // No auto-scroll or scrollTo logic here
             }}
             onStopStreaming={setStopFn}
           />
@@ -496,13 +445,12 @@ const Page = () => {
                   el.style.height = Math.min(el.scrollHeight, 160) + 'px';
                 }
               }}
-              disabled={aiThinking}
             />
             {aiThinking ? (
               <button
                 onClick={() => {
                   stopFn?.();
-                  setAiThinking(false);
+                  // Do not set aiThinking to false here; let streaming finish
                 }}
                 className="absolute bottom-4 right-4 p-1 rounded-full text-[#7f0000] transition-colors"
                 style={{ zIndex: 2 }}
@@ -542,7 +490,7 @@ const Page = () => {
       <DialogHeader className="mb-4">
       <DialogTitle className="text-center text-xl">End Chat</DialogTitle>
       <DialogDescription className="text-center mt-2">
-        This conversation won't be saved, but you'll have the chance to summarize it on the next page.
+        This conversation won&apos;t be saved, but you&apos;ll have the chance to summarize it on the next page.
       </DialogDescription>
     </DialogHeader>
     <DialogFooter className="flex justify-center gap-4 mt-4">

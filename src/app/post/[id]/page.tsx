@@ -1,46 +1,17 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  ArrowLeftCircleIcon,
-  ArrowUp,
-  MessageCircle,
-  Share2,
-  Send,
-  Reply,
-  X,
-} from "lucide-react";
 import Link from "next/link";
 import React, {
   useState,
   useEffect,
   useRef,
-  useCallback,
   useLayoutEffect,
 } from "react";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { db } from "@/lib/firebase";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  updateDoc,
-  increment,
-  query,
-  orderBy,
-  where,
-  serverTimestamp,
-} from "firebase/firestore";
+  ArrowLeftCircleIcon,
+  Reply,
+  ArrowUp,
+} from "lucide-react";
 import {
   useParams,
   useRouter as useNextRouter,
@@ -59,17 +30,29 @@ import LoginPopup from "@/components/LoginPopup";
 import SimpleShareDialog from "@/components/SimpleShareDialog";
 import { renderMathInNode } from "@/utils/mathlive";
 import MathLiveScript from "@/components/MathLiveScript";
-import ReactMarkdown from "react-markdown";
-import remarkMath from "remark-math";
-import rehypeKatex from "rehype-katex";
-import "katex/dist/katex.min.css";
-import MarkdownRenderer from "@/components/MarkdownRenderer";
 import PostHeader from "@/components/post/PostHeader";
 import PostBody from "@/components/post/PostBody";
 import PostFooter from "@/components/post/PostFooter";
-import { toggleVote } from "@/lib/toggleVote";
 import { handlePostVote } from "@/lib/handlePostVote";
 import { handleCommentVote as handleCommentVoteAction } from "@/lib/handleCommentVote";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  addDoc,
+  updateDoc,
+  increment,
+  query,
+  orderBy,
+  where,
+  serverTimestamp,
+  writeBatch,
+  deleteDoc,
+} from "firebase/firestore";
 
 // Function to format relative time
 const formatRelativeTime = (timestamp: number): string => {
@@ -133,6 +116,7 @@ interface Post {
   upvotes: number;
   commentsCount: number;
   summary?: string;
+  imageURLs?: string[];
 }
 
 // MentionComponent - makes @ mentions undeletable and styled differently
@@ -668,6 +652,36 @@ const Page = () => {
     return () => observer.disconnect();
   }, [post?.description, comments, isExpanded, replying, mathLiveReady]);
 
+  const handleDeletePost = async () => {
+    if (!post) return;
+    try {
+      // Delete all comments for this post
+      const commentsQuery = query(
+        collection(db, "comments"),
+        where("postId", "==", post.id)
+      );
+      const commentsSnapshot = await getDocs(commentsQuery);
+      const batch = writeBatch(db);
+      commentsSnapshot.docs.forEach((commentDoc) => {
+        batch.delete(commentDoc.ref);
+      });
+      await batch.commit();
+
+      // Delete the post itself
+      await deleteDoc(doc(db, "posts", post.id));
+
+      // Redirect to community or home
+      if (fromCommunity) {
+        router.push(`/community/${fromCommunity}`);
+      } else {
+        router.push("/");
+      }
+      toast("Post deleted", { description: "Your post has been successfully deleted." });
+    } catch (error) {
+      toast("Failed to delete post", { description: error.message });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex w-full pl-8">
@@ -754,16 +768,18 @@ const Page = () => {
                 postUserId={post.userId}
                 createdAt={post.createdAt}
                 currentUser={currentUser?.id || null}
-                onDelete={() => {}}
+                onDelete={handleDeletePost}
                 onReport={() => {}}
-                mode="community"
-                avatarUrl={post.avatar}
+                mode="post"
+                postAvatar={post.avatar}
               />
 
               <PostBody
                 title={post.title}
                 description={post.description}
+                summary={post.summary}
                 imageURL={post.imageURL}
+                imageURLs={post.imageURLs}
                 descRef={(el) => {
                   if (el) descriptionRef.current = el;
                 }}
@@ -910,27 +926,6 @@ const Page = () => {
                               </p>
                               <div className="flex items-center gap-2 mt-2">
                                 <button
-                                  onClick={() => handleCommentVote(comment.id)}
-                                  className={`inline-flex items-center gap-x-1.5 px-2 py-1 rounded-full text-sm ${
-                                    commentVotes[comment.id]
-                                      ? "text-blue-600 bg-blue-50"
-                                      : "text-gray-500 hover:bg-gray-100"
-                                  }`}
-                                >
-                                  <ArrowUp
-                                    className={`w-4 h-4 ${
-                                      commentVotes[comment.id]
-                                        ? "fill-blue-600"
-                                        : ""
-                                    }`}
-                                  />
-                                  <span>
-                                    {comment.upvotes +
-                                      (commentVotes[comment.id] ? 1 : 0)}
-                                  </span>
-                                </button>
-
-                                <button
                                   onClick={() =>
                                     handleReplyClick(
                                       comment.id,
@@ -1040,29 +1035,6 @@ const Page = () => {
                                       })}
                                     </p>
                                     <div className="flex items-center gap-2 mt-1">
-                                      <button
-                                        onClick={() =>
-                                          handleCommentVote(reply.id)
-                                        }
-                                        className={`inline-flex items-center gap-x-1.5 px-2 py-1 rounded-full text-xs ${
-                                          commentVotes[reply.id]
-                                            ? "text-blue-600 bg-blue-50"
-                                            : "text-gray-500 hover:bg-gray-100"
-                                        }`}
-                                      >
-                                        <ArrowUp
-                                          className={`w-3 h-3 ${
-                                            commentVotes[reply.id]
-                                              ? "fill-blue-600"
-                                              : ""
-                                          }`}
-                                        />
-                                        <span>
-                                          {reply.upvotes +
-                                            (commentVotes[reply.id] ? 1 : 0)}
-                                        </span>
-                                      </button>
-
                                       <button
                                         onClick={() =>
                                           handleReplyClick(

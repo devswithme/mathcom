@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
 import { ArrowUp, MessageCircle, Share2, Plus, MoreVertical, Trash, Flag } from 'lucide-react'
@@ -15,8 +15,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog"
 import { 
   DropdownMenu,
@@ -26,50 +24,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from 'sonner'
-
-// Function to format relative time
-const formatRelativeTime = (timestamp: number): string => {
-  const now = Date.now();
-  const diffInSeconds = Math.floor((now - timestamp) / 1000);
-  
-  if (diffInSeconds < 60) {
-    return `${diffInSeconds} second${diffInSeconds !== 1 ? 's' : ''} ago`;
-  }
-  
-  const diffInMinutes = Math.floor(diffInSeconds / 60);
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes} minute${diffInMinutes !== 1 ? 's' : ''} ago`;
-  }
-  
-  const diffInHours = Math.floor(diffInMinutes / 60);
-  if (diffInHours < 24) {
-    return `${diffInHours} hour${diffInHours !== 1 ? 's' : ''} ago`;
-  }
-  
-  const diffInDays = Math.floor(diffInHours / 24);
-  if (diffInDays < 7) {
-    return `${diffInDays} day${diffInDays !== 1 ? 's' : ''} ago`;
-  }
-  
-  const diffInWeeks = Math.floor(diffInDays / 7);
-  if (diffInWeeks < 5) {
-    return `${diffInWeeks} week${diffInWeeks !== 1 ? 's' : ''} ago`;
-  }
-  
-  const diffInMonths = Math.floor(diffInDays / 30);
-  if (diffInMonths < 12) {
-    return `${diffInMonths} month${diffInMonths !== 1 ? 's' : ''} ago`;
-  }
-  
-  const diffInYears = Math.floor(diffInDays / 365);
-  return `${diffInYears} year${diffInYears !== 1 ? 's' : ''} ago`;
-}
-
-const communityAvatars: Record<string, string> = {
-  cie_checkpoint: '/community_avatars/cie_checkpoint.png',
-  cie_igcse: '/community_avatars/cie_igcse.png',
-  cie_alevel: '/community_avatars/cie_alevel.png',
-};
+import PostCard from '@/components/post/PostCard'
+import { handlePostVote } from '@/lib/handlePostVote'
 
 export default function CIEIGCSECommunity() {
   const router = useRouter();
@@ -77,9 +33,7 @@ export default function CIEIGCSECommunity() {
   const [loading, setLoading] = useState(true)
   const [votedPosts, setVotedPosts] = useState<Record<string, boolean>>({})
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
-  const [shareUrl, setShareUrl] = useState('')
   const [loadingVote, setLoadingVote] = useState<string | null>(null);
-  const [localVotes, setLocalVotes] = useState<Record<string, boolean>>({});
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportReason, setReportReason] = useState('');
@@ -92,6 +46,7 @@ export default function CIEIGCSECommunity() {
   const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [loginDialogMessage, setLoginDialogMessage] = useState('You need to be logged in to comment on posts.');
+  const votingInProgressRef = useRef(false);
   
   const COMMUNITY_SLUG = "cie_igcse";
 
@@ -100,25 +55,23 @@ export default function CIEIGCSECommunity() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user ? user.uid : null);
       if (user) {
-        // Check if user has already joined
-        const userRef = doc(db, 'users', user.uid);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists()) {
-          const data = userSnap.data();
-          setHasJoined(Array.isArray(data.communities) && data.communities.includes('cie_igcse'));
+        // Check if user has joined this community
+        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          setHasJoined(userData.communities?.includes(COMMUNITY_SLUG) || false);
         }
-      } else {
-        setHasJoined(false);
       }
     });
 
-    // Fetch posts
-    fetchPosts();
-    // Fetch member count
     fetchMemberCount();
-    
     return () => unsubscribe();
-  }, [localVotes])
+  }, []);
+
+  // Fetch posts whenever currentUser changes
+  useEffect(() => {
+    fetchPosts();
+  }, [currentUser]);
 
   const fetchPosts = async () => {
     // Query posts for this specific community
@@ -156,7 +109,7 @@ export default function CIEIGCSECommunity() {
         
         // Check for local vote state
         const postId = docSnap.id;
-        if (localVotes[postId]) {
+        if (votedPosts[postId]) {
           setVotedPosts(prev => ({
             ...prev,
             [postId]: true
@@ -239,87 +192,53 @@ export default function CIEIGCSECommunity() {
   };
 
   const handleVote = async (e: React.MouseEvent, postId: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
-    // Don't process if already processing a vote for this post
-    if (loadingVote === postId) return;
-    
-    // Start loading state immediately to prevent double clicks
-    setLoadingVote(postId);
-    
-    // Get current vote state
-    const currentVoted = votedPosts[postId] || false;
-    const newVoteState = !currentVoted;
-    
-    // Update UI optimistically
-    setVotedPosts(prev => ({
-      ...prev,
-      [postId]: newVoteState
-    }));
-    
-    // Remember local vote state for this session
-    setLocalVotes(prev => ({
-      ...prev,
-      [postId]: newVoteState
-    }));
-    
-    try {
-      // Update in Firebase
-      const postRef = doc(db, 'posts', postId);
-      await updateDoc(postRef, {
-        upvotes: increment(newVoteState ? 1 : -1)
-      });
-    } catch (error) {
-      console.error('Error updating vote:', error);
-      
-      // Revert UI state
-      setVotedPosts(prev => ({
-        ...prev,
-        [postId]: currentVoted
-      }));
-      
-      setLocalVotes(prev => ({
-        ...prev,
-        [postId]: currentVoted
-      }));
-    } finally {
-      // Clear loading state
-      setLoadingVote(null);
+    e.preventDefault();
+    e.stopPropagation();
+    if (!currentUser) {
+      setLoginDialogMessage('You need to be logged in to upvote posts.');
+      setShowLoginDialog(true);
+      return;
     }
-  }
+    if (loadingVote === postId || votingInProgressRef.current) return;
+    await handlePostVote({
+      postId,
+      currentVoted: votedPosts[postId] || false,
+      userId: currentUser,
+      setLoadingId: (id) => setLoadingVote(id),
+      votingInProgressRef,
+      updateLocalState: (newVoteState) => {
+        setVotedPosts((prev) => ({ ...prev, [postId]: newVoteState }));
+        setPosts((prev) =>
+          prev.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  upvotes: (post.upvotes || 0) + (newVoteState ? 1 : -1),
+                  upvotedBy: {
+                    ...(post.upvotedBy || {}),
+                    [currentUser]: newVoteState ? Date.now() : undefined,
+                  },
+                }
+              : post
+          )
+        );
+      },
+    });
+    // Re-fetch posts to get the latest upvote state from Firestore
+    fetchPosts();
+  };
   
-  const handleCommentClick = (e: React.MouseEvent, postId: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
+  const handleCommentClick = (postId: string) => {
     if (!currentUser) {
       setLoginDialogMessage('You need to be logged in to comment on posts.');
       setShowLoginDialog(true);
       return;
     }
-    
-    router.push(`/post/${postId}`)
+    router.push(`/post/${postId}?from=cie_igcse`)
   }
 
-  const handleShare = (e: React.MouseEvent, postId: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
-    // Create the full URL to share
-    const postUrl = `${window.location.origin}/post/${postId}`
-    setShareUrl(postUrl)
+  const handleShare = () => {
     setShareDialogOpen(true)
-  }
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(shareUrl)
-      .then(() => {
-        // Success - don't auto-close
-      })
-      .catch(err => {
-        console.error('Failed to copy: ', err);
-      });
   }
 
   const handleDeletePost = async (postId: string) => {
@@ -467,131 +386,25 @@ export default function CIEIGCSECommunity() {
             <div className="w-full max-w-3xl">
               <div className="flex flex-col">
                 {posts.map((post, index) => (
-                  <div 
+                  <PostCard
                     key={post.id}
-                    className="border-b border-black/20 last:border-b-0 group"
-                  >
-                    <Link
-                      href={`/post/${post.id}`}
-                      className={`block px-5 py-4 space-y-3 relative ${index === 0 ? 'pt-5' : ''}`}
-                    >
-                      {/* Hover effect overlay */}
-                      <div className="absolute inset-x-0 top-2 bottom-2 bg-neutral-50 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none" />
-                      
-                      {/* Content wrapper */}
-                      <div className="relative z-10">
-                        {/* User Info */}
-                        <div className='flex items-center gap-x-3'>
-                          {post.username === 'Anonymous User' ? (
-                            <img
-                              src="/defaultprofile.png"
-                              alt='Anonymous Avatar'
-                              className='w-10 h-10 rounded-full object-cover bg-neutral-100'
-                            />
-                          ) : post.avatar ? (
-                            <img
-                              src={post.avatar}
-                              alt='User Avatar'
-                              className='w-10 h-10 rounded-full object-cover bg-neutral-100'
-                            />
-                          ) : (
-                            <div className='w-10 h-10 bg-neutral-100 rounded-full' />
-                          )}
-                          <div className="flex-1">
-                            <h1 className='font-semibold text-sm'>
-                              {post.username || 'Unknown'}
-                            </h1>
-                            <div className='flex items-center gap-x-1 text-xs text-muted-foreground'>
-                              <span>
-                                {post.createdAt?.seconds
-                                  ? formatRelativeTime(post.createdAt.seconds * 1000)
-                                  : 'Just now'}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* Triple dot menu */}
-                          <div onClick={(e) => e.preventDefault()} className="relative z-20 -mt-2">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <button className="p-1.5 hover:bg-gray-100/10">
-                                  <MoreVertical className="h-5 w-5 text-gray-500" />
-                                </button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {currentUser && post.userId === currentUser ? (
-                                  <DropdownMenuItem 
-                                    onClick={() => {
-                                      setDeletingPost(post.id);
-                                      setConfirmDeleteOpen(true);
-                                    }} 
-                                    className="cursor-pointer text-red-600"
-                                  >
-                                    <Trash className="h-4 w-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                ) : (
-                                  <DropdownMenuItem 
-                                    onClick={() => handleReportPost(post.id)} 
-                                    className="cursor-pointer text-yellow-600"
-                                  >
-                                    <Flag className="h-4 w-4" />
-                                    Report
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </div>
-
-                        {/* Post Content */}
-                        <h1 className='text-lg font-bold'>{post.title}</h1>
-                        <p className='text-sm'>{post.description}</p>
-
-                        {/* Uploaded Image */}
-                        {post.imageURL && (
-                          <div className='w-full aspect-video bg-neutral-100 rounded-xl my-5'>
-                            <img
-                              src={post.imageURL}
-                              alt='Uploaded image'
-                              className='w-full h-full object-cover rounded-xl'
-                            />
-                          </div>
-                        )}
-
-                        {/* Buttons */}
-                        <div className='flex items-center gap-x-1 mt-4'>
-                          <button 
-                            onClick={(e) => handleVote(e, post.id)}
-                            className={`flex items-center px-3 py-1.5 rounded-full transition-all gap-x-2 ${
-                              votedPosts[post.id] 
-                                ? 'text-blue-600 bg-blue-50' 
-                                : 'text-gray-500 hover:bg-gray-100'
-                            }`}
-                          >
-                            <ArrowUp className={`w-5 h-5 transform transition-transform ${votedPosts[post.id] ? 'scale-110' : ''}`} />
-                            <span className='font-medium text-sm'>{(post.upvotes || 0) + (votedPosts[post.id] ? 1 : 0)}</span>
-                          </button>
-                          
-                          <button
-                            onClick={(e) => handleCommentClick(e, post.id)}
-                            className='flex items-center gap-x-2 px-3 py-1.5 rounded-full text-gray-500 hover:bg-gray-100'
-                          >
-                            <MessageCircle className='w-5 h-5' />
-                            <span className='text-sm'>{post.commentsCount || 0}</span>
-                          </button>
-                          
-                          <button 
-                            onClick={(e) => handleShare(e, post.id)}
-                            className='flex items-center gap-x-2 px-3 py-1.5 rounded-full text-gray-500 hover:bg-gray-100'
-                          >
-                            <Share2 className='w-5 h-5' />
-                            <span className='text-sm'>Share</span>
-                          </button>
-                        </div>
-                      </div>
-                    </Link>
-                  </div>
+                    post={post}
+                    index={index}
+                    isVoted={!!votedPosts[post.id]}
+                    currentUser={currentUser}
+                    loadingVote={loadingVote}
+                    canVote={!!currentUser}
+                    getVoteButtonClass={(v) => v ? 'text-blue-600 bg-blue-50' : 'text-gray-500 hover:bg-gray-100'}
+                    onVote={handleVote}
+                    onComment={(_, postId) => handleCommentClick(postId)}
+                    onShare={handleShare}
+                    onDelete={handleDeletePost}
+                    onReport={handleReportPost}
+                    descRef={() => {}}
+                    getPreviewHtml={(html) => html}
+                    mode="user"
+                    postLink={`/post/${post.id}?from=cie_igcse`}
+                  />
                 ))}
               </div>
             </div>

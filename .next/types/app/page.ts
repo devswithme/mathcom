@@ -1,4 +1,4 @@
-// File: /Users/eugenewongso/Documents/Projects/mathcom/src/app/page.tsx
+// File: /Users/keananwongso/Documents/Personal/MathCom/mathcom_ai/src/app/page.tsx
 import * as entry from '../../../src/app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
