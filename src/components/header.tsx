@@ -23,7 +23,7 @@ import { signOut, onAuthStateChanged } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useEffect, useState, useRef } from "react";
 import Navbar from "@/components/navbar";
-import { useNavbar } from '@/context/NavbarContext';
+import { useNavbar } from "@/context/NavbarContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,9 +34,17 @@ import {
   AlertDialogTitle,
   AlertDialogCancel,
 } from "@/components/ui/alert-dialog";
-import clsx from 'clsx';
-import { db } from '@/lib/firebase';
-import { collection, getDocs, query, orderBy, where, doc, getDoc } from 'firebase/firestore';
+import clsx from "clsx";
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  where,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 import LoginPopup from "./LoginPopup";
 import LoginRequired from "./LoginRequired";
 
@@ -49,7 +57,10 @@ export default function Header() {
   const [showLoginPopup, setShowLoginPopup] = useState(false);
   const [loginRedirectPath, setLoginRedirectPath] = useState("/");
   const [searchValue, setSearchValue] = useState("");
-  const [searchResults, setSearchResults] = useState<{posts: any[], comments: any[]} | null>(null);
+  const [searchResults, setSearchResults] = useState<{
+    posts: any[];
+    comments: any[];
+  } | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -78,25 +89,27 @@ export default function Header() {
       setShowLoginAlert(true);
       setLoginRedirectPath("/ask");
     } else {
-      let community = '';
-      let fromParam = 'home'; // Default to home
+      let community = "";
+      let fromParam = "home"; // Default to home
 
-      if (pathname.startsWith('/community/')) {
-        const pathParts = pathname.split('/');
+      if (pathname.startsWith("/community/")) {
+        const pathParts = pathname.split("/");
         if (pathParts.length >= 3) {
           community = pathParts[2]; // Get the community slug
           fromParam = `community/${community}`;
         }
-      } else if (pathname === '/') {
-        fromParam = 'home';
+      } else if (pathname === "/") {
+        fromParam = "home";
       } else {
         // For any other page, we might not know the exact context to return to,
         // so defaulting to redirecting to the home page after posting might be safest.
         // Or, we can use a generic 'unknown' and let the /ask page decide.
-        fromParam = 'home'; // Or consider 'unknown' or the current pathname if appropriate
+        fromParam = "home"; // Or consider 'unknown' or the current pathname if appropriate
       }
-      
-      const askPageUrl = community ? `/ask?community=${community}&from=${fromParam}` : `/ask?from=${fromParam}`;
+
+      const askPageUrl = community
+        ? `/ask?community=${community}&from=${fromParam}`
+        : `/ask?from=${fromParam}`;
       router.push(askPageUrl);
     }
   };
@@ -125,25 +138,36 @@ export default function Header() {
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
     searchTimeout.current = setTimeout(async () => {
       // --- Fetch posts ---
-      const postsQuery = query(collection(db, 'posts'), orderBy('createdAt', 'desc'));
+      const postsQuery = query(
+        collection(db, "posts"),
+        orderBy("createdAt", "desc")
+      );
       const postsSnap = await getDocs(postsQuery);
       const posts = postsSnap.docs
-        .map(docSnap => ({ id: docSnap.id, ...(docSnap.data() as { title?: string; description?: string }) }))
-        .filter(post =>
-          (typeof post.title === 'string' && post.title.toLowerCase().includes(searchValue.toLowerCase())) ||
-          (typeof post.description === 'string' && post.description.toLowerCase().includes(searchValue.toLowerCase()))
+        .map((docSnap) => ({
+          id: docSnap.id,
+          ...(docSnap.data() as { title?: string; description?: string }),
+        }))
+        .filter(
+          (post) =>
+            (typeof post.title === "string" &&
+              post.title.toLowerCase().includes(searchValue.toLowerCase())) ||
+            (typeof post.description === "string" &&
+              post.description
+                .toLowerCase()
+                .includes(searchValue.toLowerCase()))
         )
         .slice(0, 5);
 
       // --- Fetch comments ---
-      const commentsQuery = query(collection(db, 'comments'));
+      const commentsQuery = query(collection(db, "comments"));
       const commentsSnap = await getDocs(commentsQuery);
       const comments = [];
       for (const docSnap of commentsSnap.docs) {
         const comment = docSnap.data();
         if (comment.text?.toLowerCase().includes(searchValue.toLowerCase())) {
           // Fetch parent post
-          const postRef = doc(db, 'posts', comment.postId);
+          const postRef = doc(db, "posts", comment.postId);
           const postSnap = await getDoc(postRef);
           if (postSnap.exists()) {
             comments.push({
@@ -165,7 +189,7 @@ export default function Header() {
   }, [searchValue]);
 
   // Helper: check if on chat page
-  const isOnChatPage = pathname === '/chat';
+  const isOnChatPage = pathname === "/chat";
 
   // Intercept navigation for Home, Explore, Ask
   const handleNav = (href: string) => {
@@ -185,7 +209,8 @@ export default function Header() {
           <AlertDialogHeader>
             <AlertDialogTitle>Leave chat?</AlertDialogTitle>
             <AlertDialogDescription>
-              If you leave this page, your current chat will be lost. Are you sure you want to leave?
+              If you leave this page, your current chat will be lost. Are you
+              sure you want to leave?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -203,19 +228,29 @@ export default function Header() {
       </AlertDialog>
       <header className="fixed top-0 z-50 w-full border-b-[0.1px] border-black py-2 flex justify-between items-center gap-x-4 sm:gap-x-10 bg-white px-8 h-[56px]">
         {/* Mobile menu button - shown only on small screens */}
-        <Button 
+        <Button
           onClick={toggleNavbar}
-          variant="ghost" 
-          size="sm" 
+          variant="ghost"
+          size="sm"
           className="p-1 mr-2 md:hidden"
         >
           <Menu className="h-6 w-6" />
         </Button>
-        
-        <span onClick={() => handleNav('/')} className="ml-[-20px] cursor-pointer">
-          <Image src="/logo.png" alt="logo" width={85} height={85} priority className="my-[-12px]" />
+
+        <span
+          onClick={() => handleNav("/")}
+          className="ml-[-20px] cursor-pointer"
+        >
+          <Image
+            src="/logo.png"
+            alt="logo"
+            width={85}
+            height={85}
+            priority
+            className="my-[-12px]"
+          />
         </span>
-        
+
         <form
           onSubmit={handleSearch}
           className="w-full lg:max-w-lg max-w-sm hidden md:flex"
@@ -224,13 +259,15 @@ export default function Header() {
             <input
               type="text"
               value={searchValue}
-              onChange={e => setSearchValue(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') handleSearch(e);
+              onChange={(e) => setSearchValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSearch(e);
               }}
               placeholder="Search MathCom"
               className="w-full rounded-full bg-gray-100 border border-gray-200 py-2 pl-10 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-[#11244DB2]"
-              onFocus={() => { if (searchValue.trim()) setShowSearchDropdown(true); }}
+              onFocus={() => {
+                if (searchValue.trim()) setShowSearchDropdown(true);
+              }}
               onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
             />
             <button
@@ -244,53 +281,75 @@ export default function Header() {
             {showSearchDropdown && (
               <div className="absolute left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-96 overflow-y-auto">
                 {searchLoading ? (
-                  <div className="p-4 text-center text-gray-500">Searching...</div>
-                ) : searchResults && (searchResults.posts.length > 0 || searchResults.comments.length > 0) ? (
+                  <div className="p-4 text-center text-gray-500">
+                    Searching...
+                  </div>
+                ) : searchResults &&
+                  (searchResults.posts.length > 0 ||
+                    searchResults.comments.length > 0) ? (
                   <div>
                     {searchResults.posts.length > 0 && (
                       <div>
-                        <div className="px-4 pt-3 pb-1 text-xs text-gray-500 font-semibold">Posts</div>
-                        {searchResults.posts.map(post => (
+                        <div className="px-4 pt-3 pb-1 text-xs text-gray-500 font-semibold">
+                          Posts
+                        </div>
+                        {searchResults.posts.map((post) => (
                           <div
                             key={post.id}
                             className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
                             onMouseDown={() => router.push(`/post/${post.id}`)}
                           >
-                            <div className="font-medium text-sm truncate">{typeof post.title === 'string' ? post.title : ''}</div>
-                            <div className="text-xs text-gray-500 truncate">{typeof post.description === 'string' ? post.description : ''}</div>
+                            <div className="font-medium text-sm truncate">
+                              {typeof post.title === "string" ? post.title : ""}
+                            </div>
+                            <div className="text-xs text-gray-500 truncate">
+                              {typeof post.description === "string"
+                                ? post.description
+                                : ""}
+                            </div>
                           </div>
                         ))}
                       </div>
                     )}
                     {searchResults.comments.length > 0 && (
                       <div>
-                        <div className="px-4 pt-3 pb-1 text-xs text-gray-500 font-semibold">Comments</div>
-                        {searchResults.comments.map(comment => (
+                        <div className="px-4 pt-3 pb-1 text-xs text-gray-500 font-semibold">
+                          Comments
+                        </div>
+                        {searchResults.comments.map((comment) => (
                           <div
                             key={comment.id}
                             className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                            onMouseDown={() => router.push(`/post/${comment.postId}`)}
+                            onMouseDown={() =>
+                              router.push(`/post/${comment.postId}`)
+                            }
                           >
-                            <div className="text-xs text-gray-700 truncate">{comment.text}</div>
-                            <div className="text-xs text-gray-400 truncate">in: {comment.postTitle}</div>
+                            <div className="text-xs text-gray-700 truncate">
+                              {comment.text}
+                            </div>
+                            <div className="text-xs text-gray-400 truncate">
+                              in: {comment.postTitle}
+                            </div>
                           </div>
                         ))}
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="p-4 text-center text-gray-400">No results found</div>
+                  <div className="p-4 text-center text-gray-400">
+                    No results found
+                  </div>
                 )}
               </div>
             )}
           </div>
         </form>
-        
+
         <div className="flex gap-x-3 sm:gap-x-5 items-center">
           {/* Mobile Ask button */}
           {!user ? (
             <Button
-              onClick={() => handleNav('/ask')}
+              onClick={() => handleNav("/ask")}
               className="md:hidden bg-transparent hover:bg-[#11244DB2]/10 rounded-full aspect-square p-0 border border-black hover:border-[#11244DB2] transition-colors"
               size="icon"
               variant="ghost"
@@ -299,7 +358,7 @@ export default function Header() {
             </Button>
           ) : (
             <Button
-              onClick={() => handleNav('/ask')}
+              onClick={() => handleNav("/ask")}
               className="md:hidden bg-[#11244DB2] rounded-full aspect-square p-0"
               size="icon"
             >
@@ -310,7 +369,7 @@ export default function Header() {
           {/* Desktop Ask button - only shown for logged in users */}
           {user ? (
             <Button
-              onClick={() => handleNav('/ask')}
+              onClick={() => handleNav("/ask")}
               className="bg-[#11244DB2] rounded-full uppercase hidden sm:flex font-bold transition-colors hover:bg-[#11244D]/90 hover:shadow-md"
               size="lg"
             >
@@ -319,7 +378,7 @@ export default function Header() {
             </Button>
           ) : (
             <Button
-              onClick={() => handleNav('/ask')}
+              onClick={() => handleNav("/ask")}
               className="hidden sm:flex bg-transparent hover:bg-[#11244DB2]/10 rounded-full aspect-square p-2 transition-colors border border-black hover:border-[#11244DB2]"
               size="icon"
               variant="ghost"
@@ -355,7 +414,10 @@ export default function Header() {
                   sideOffset={5}
                   className="shadow-md border border-gray-200 w-48 overflow-hidden rounded-xl mt-1 p-0"
                 >
-                  <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={() => router.push("/profile")}
+                    className="cursor-pointer"
+                  >
                     {user.photoURL ? (
                       <Image
                         src={user.photoURL}
@@ -370,11 +432,17 @@ export default function Header() {
                     <span className="font-medium text-sm">Profile</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => router.push('/profile/edit')} className="cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={() => router.push("/profile/edit")}
+                    className="cursor-pointer"
+                  >
                     <Settings className="mr-3 h-5 w-5" />
                     <span className="font-medium text-sm">Settings</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="cursor-pointer"
+                  >
                     <LogOut className="mr-3 h-5 w-5" />
                     <span className="font-medium text-sm">Log Out</span>
                   </DropdownMenuItem>
@@ -384,7 +452,7 @@ export default function Header() {
           ) : (
             <Button
               onClick={() => {
-                setLoginRedirectPath('/');
+                setLoginRedirectPath("/");
                 setShowLoginPopup(true);
               }}
               className="rounded-full px-5 py-2 bg-[#11244DB2] text-white hover:bg-[#11244D]/90"
@@ -416,12 +484,15 @@ export default function Header() {
       </header>
 
       {/* Login Alert Dialog */}
-      <LoginRequired isOpen={showLoginAlert} onClose={() => setShowLoginAlert(false)} />
+      <LoginRequired
+        isOpen={showLoginAlert}
+        onClose={() => setShowLoginAlert(false)}
+      />
 
       {/* Login Popup */}
-      <LoginPopup 
-        isOpen={showLoginPopup} 
-        onClose={() => setShowLoginPopup(false)} 
+      <LoginPopup
+        isOpen={showLoginPopup}
+        onClose={() => setShowLoginPopup(false)}
         redirectTo={loginRedirectPath}
       />
     </>
